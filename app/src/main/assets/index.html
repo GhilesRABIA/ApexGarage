@@ -1,0 +1,1047 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>ApexGarage</title>
+</head>
+<body>
+<style>
+@font-face{font-family:'Barlow Condensed';font-weight:500;font-style:normal;font-display:swap;src:url('fonts/barlow-condensed-latin-500-normal.woff2') format('woff2')}
+@font-face{font-family:'Barlow Condensed';font-weight:600;font-style:normal;font-display:swap;src:url('fonts/barlow-condensed-latin-600-normal.woff2') format('woff2')}
+@font-face{font-family:'Barlow Condensed';font-weight:700;font-style:normal;font-display:swap;src:url('fonts/barlow-condensed-latin-700-normal.woff2') format('woff2')}
+@font-face{font-family:'IBM Plex Sans';font-weight:400;font-style:normal;font-display:swap;src:url('fonts/ibm-plex-sans-latin-400-normal.woff2') format('woff2')}
+@font-face{font-family:'IBM Plex Sans';font-weight:500;font-style:normal;font-display:swap;src:url('fonts/ibm-plex-sans-latin-500-normal.woff2') format('woff2')}
+@font-face{font-family:'IBM Plex Sans';font-weight:600;font-style:normal;font-display:swap;src:url('fonts/ibm-plex-sans-latin-600-normal.woff2') format('woff2')}
+@font-face{font-family:'IBM Plex Mono';font-weight:500;font-style:normal;font-display:swap;src:url('fonts/ibm-plex-mono-latin-500-normal.woff2') format('woff2')}
+:root{color-scheme:light;padding:env(safe-area-inset-top,0px) 0 env(safe-area-inset-bottom,0px)}
+body{margin:0}
+img{max-width:100%}
+[hidden]{display:none!important}
+/* Concept : application mobile en trois zones (barre véhicule collante, écran qui défile, barre de 5 onglets fixe). Les jauges et les barres d'usure à segments rappellent un tableau de bord d'atelier. */
+:root{
+  --bg:#ECEFEE; --surface:#F8FAF9; --surface2:#E1E7E5; --ink:#0F2A2E; --ink2:#506567; --line:#CBD4D2;
+  --accent:#1D5FD1; --accent-ink:#FFFFFF;
+  --ok:#1B7F46; --warn:#A85F00; --crit:#B52A1B; --onc:#FFFFFF;
+  --c1:#1D5FD1; --c2:#C28A1C; --c3:#7E9091;
+  --f-display:'Barlow Condensed','Arial Narrow',Arial,sans-serif;
+  --f-body:'IBM Plex Sans',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --f-mono:'IBM Plex Mono',ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0B1719; --surface:#122427; --surface2:#1A3033; --ink:#E6EFEE; --ink2:#93A9AA; --line:#274044;
+    --accent:#6FA4FF; --accent-ink:#0B1719;
+    --ok:#4CC37F; --warn:#F0A537; --crit:#FF7B69; --onc:#08130F;
+    --c1:#6FA4FF; --c2:#E3B04B; --c3:#8FA5A6; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0B1719; --surface:#122427; --surface2:#1A3033; --ink:#E6EFEE; --ink2:#93A9AA; --line:#274044;
+  --accent:#6FA4FF; --accent-ink:#0B1719;
+  --ok:#4CC37F; --warn:#F0A537; --crit:#FF7B69; --onc:#08130F;
+  --c1:#6FA4FF; --c2:#E3B04B; --c3:#8FA5A6; color-scheme:dark;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{background:var(--bg);color:var(--ink);font:15px/1.45 var(--f-body);max-width:560px;margin:0 auto;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:0;-webkit-tap-highlight-color:transparent}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--bg)}
+button{font:inherit;color:inherit;cursor:pointer}
+input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+h1,h2,h3,h4,p{margin:0}
+small{font-size:12px;color:var(--ink2)}
+.muted{color:var(--ink2)}
+.mono{font-family:var(--f-mono);font-variant-numeric:tabular-nums}
+.grow{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px}
+.grow b{font-weight:600;overflow-wrap:anywhere}
+.s-ok{--c:var(--ok)} .s-warn{--c:var(--warn)} .s-crit{--c:var(--crit)} .s-na{--c:var(--ink2)}
+
+/* barre du haut */
+.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--bg);display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid var(--line)}
+.word{font-family:var(--f-display);font-size:22px;letter-spacing:.14em;line-height:1;display:flex;gap:6px;white-space:nowrap}
+.word b{font-weight:700}.word span{font-weight:500;color:var(--ink2)}
+.vchip{display:flex;align-items:center;gap:8px;min-width:0;max-width:62%;background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:6px 10px 6px 14px;min-height:40px}
+.vchip .vn{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.plate{display:inline-block;font:500 12px/1 var(--f-mono);letter-spacing:.08em;background:#F4F4EE;color:#111;border:2px solid #111;border-radius:5px;padding:4px 7px;white-space:nowrap}
+
+main{display:flex;flex-direction:column;gap:22px;padding-block:18px calc(92px + env(safe-area-inset-bottom,0px))}
+.sec{display:flex;flex-direction:column;gap:10px;min-width:0}
+.sec-h{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.lbl{font:600 12px/1 var(--f-body);letter-spacing:.1em;text-transform:uppercase;color:var(--ink2)}
+.title{font:700 30px/1.05 var(--f-display);letter-spacing:.01em;text-wrap:balance}
+.list{background:var(--surface);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.row{display:flex;align-items:center;gap:12px;padding:12px 14px;min-height:58px;width:100%;background:none;border:0;border-top:1px solid var(--line);text-align:left}
+.list>.row:first-child,.list>:first-child>.row:first-child{border-top:0}
+button.row:active{background:var(--surface2)}
+.pct{font:600 15px/1 var(--f-mono);color:var(--c,var(--ink2));min-width:44px;text-align:right}
+.rt{display:flex;flex-direction:column;align-items:flex-end;gap:4px}
+.sb{display:grid;grid-template-columns:repeat(10,5px);gap:2px;height:10px;flex:none}
+.sb i{background:var(--line);border-radius:1px}.sb i.on{background:var(--c)}
+.chip{display:inline-flex;align-items:center;font:600 11px/1 var(--f-body);letter-spacing:.05em;text-transform:uppercase;padding:5px 8px;border-radius:999px;color:var(--c,var(--ink2));background:color-mix(in srgb,var(--c,var(--ink2)) 15%,transparent);white-space:nowrap}
+.k-diy{--c:var(--accent)}.k-pro{--c:var(--ink2)}
+.empty{padding:18px 14px;color:var(--ink2)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:46px;padding:0 18px;border-radius:12px;border:1px solid var(--accent);background:var(--accent);color:var(--accent-ink);font-weight:600}
+.btn.ghost{background:transparent;color:var(--ink);border-color:var(--line)}
+.btn.sm{min-height:38px;padding:0 14px;font-size:14px;border-radius:10px}
+.btn.danger{background:transparent;color:var(--crit);border-color:color-mix(in srgb,var(--crit) 50%,transparent)}
+.btn.full{width:100%}
+.seg{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;background:var(--surface2);border-radius:12px;padding:3px;gap:3px}
+.seg button{border:0;background:transparent;min-height:38px;border-radius:9px;font-weight:600;font-size:14px;color:var(--ink2)}
+.seg button.on{background:var(--surface);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.12)}
+
+/* cockpit */
+.hero{display:flex;gap:8px;align-items:center;justify-content:space-between;background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:16px}
+.hinfo{display:flex;flex-direction:column;gap:8px;min-width:0;align-items:flex-start;flex:1}
+.hrow{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.hinfo h1{font:700 32px/1 var(--f-display);overflow-wrap:anywhere;text-wrap:balance}
+.odo{display:flex;align-items:baseline;gap:6px;font-family:var(--f-display);font-size:18px;color:var(--ink2)}
+.odo .mono{font:600 30px/1 var(--f-display);color:var(--ink);letter-spacing:.02em;font-variant-numeric:tabular-nums}
+.hg{flex:none;width:158px;display:flex;flex-direction:column;align-items:center;gap:6px}
+.gauge{width:100%;height:auto;display:block}
+.g-num{font-family:var(--f-display);font-weight:700;font-size:44px;fill:var(--ink)}
+.g-lbl{font-family:var(--f-body);font-weight:600;font-size:10px;letter-spacing:.12em;fill:var(--ink2)}
+.qa{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.qa button{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;min-height:64px;padding:8px 4px;background:var(--surface);border:1px solid var(--line);border-radius:12px;font-size:13px;font-weight:600}
+.qa svg{width:22px;height:22px;stroke:var(--accent);fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.mx{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--line);border:1px solid var(--line);border-radius:14px;overflow:hidden}
+.mx>div{background:var(--surface);padding:12px;display:flex;flex-direction:column;gap:4px;min-width:0}
+.mx b{font:700 22px/1.05 var(--f-display);font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.note{background:color-mix(in srgb,var(--accent) 12%,transparent);border-radius:12px;padding:12px 14px;display:flex;flex-direction:column;gap:8px;align-items:flex-start;font-size:14px}
+
+/* rayon x */
+.car{width:100%;height:auto;display:block}
+.car .body{fill:var(--surface2);stroke:var(--ink2);stroke-width:2;stroke-linejoin:round}
+.car .tire{fill:var(--ink2)}.car .rim{fill:var(--surface)}.car .ground{stroke:var(--line);stroke-width:2}
+.hot{cursor:pointer}.hot circle{fill:var(--c);stroke:var(--bg);stroke-width:3}
+.hot text{font:700 14px var(--f-display);fill:var(--onc)}
+.legend{display:flex;flex-wrap:wrap;gap:8px}
+.num{display:inline-grid;place-items:center;width:26px;height:26px;border-radius:50%;background:var(--c,var(--ink2));color:var(--onc);font:700 14px/1 var(--f-display);flex:none}
+.sub{padding:8px 14px 4px;font:600 11px/1 var(--f-body);letter-spacing:.1em;text-transform:uppercase;color:var(--ink2);background:var(--surface2);border-top:1px solid var(--line)}
+.sysb>.row:first-child{border-top:1px solid var(--line)}
+.list>.sysb:first-child>.row:first-child{border-top:0}
+.sysb .row .sb{grid-template-columns:repeat(10,4px)}
+
+/* budget */
+.prk{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+.prk b{font:700 52px/1 var(--f-display);font-variant-numeric:tabular-nums}
+.prk span{color:var(--ink2)}
+.chart{width:100%;height:auto;display:block}
+.chart .ax{font:500 9px var(--f-mono);fill:var(--ink2)}
+.keys{display:flex;gap:14px;flex-wrap:wrap;font-size:13px}
+.keys i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:6px;vertical-align:-1px}
+.tco .bar{height:6px;border-radius:3px;background:var(--line);overflow:hidden;margin-top:6px}
+.tco .bar i{display:block;height:100%;background:var(--accent)}
+.tco .row{align-items:flex-start;min-height:0}
+
+/* formulaires et feuilles */
+#sheet{position:fixed;inset:0;z-index:20;display:flex;align-items:flex-end;justify-content:center}
+.scrim{position:absolute;inset:0;background:rgba(4,14,16,.58)}
+.panel{position:relative;width:100%;max-width:560px;max-height:92%;display:flex;flex-direction:column;background:var(--surface);border:1px solid var(--line);border-bottom:0;border-radius:20px 20px 0 0}
+.grab{width:40px;height:4px;border-radius:2px;background:var(--line);margin:8px auto 0}
+.ph,.pb,.pf{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.ph{display:flex;justify-content:space-between;align-items:center;gap:8px;padding-top:6px;padding-bottom:6px}
+.ph h2{font:700 24px/1.1 var(--f-display);overflow-wrap:anywhere}
+.x{width:44px;height:44px;border:0;background:none;font-size:28px;line-height:1;color:var(--ink2)}
+.pb{overflow:auto;display:flex;flex-direction:column;gap:12px;padding-top:4px;padding-bottom:16px;overscroll-behavior:contain}
+.pf{padding-top:10px;padding-bottom:calc(12px + env(safe-area-inset-bottom,0px));border-top:1px solid var(--line)}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.fld{display:flex;flex-direction:column;gap:5px;min-width:0}
+.fld>span{font-size:12px;font-weight:500;color:var(--ink2)}
+.fld input,.fld select,.fld textarea{width:100%;min-width:0;max-width:100%;min-height:46px;padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:var(--bg);font-size:16px}
+.fld textarea{min-height:76px;resize:vertical}
+.chk{display:flex;align-items:center;gap:10px;min-height:42px}
+.chk input{width:22px;height:22px;accent-color:var(--accent);flex:none}
+.err{color:var(--crit);font-size:14px;font-weight:500}
+.verd{display:flex;flex-direction:column;gap:6px;font-size:14px}
+.verd div{display:flex;gap:8px;align-items:flex-start}
+.pdet{display:flex;gap:14px;align-items:center;padding:12px 14px;border-radius:12px;background:var(--bg)}
+.pnum{font:700 54px/1 var(--f-display);color:var(--c);font-variant-numeric:tabular-nums}
+.pnum small{font-size:22px;color:var(--c)}
+.calc{margin:0;padding-left:18px;color:var(--ink2);font-size:13px;display:flex;flex-direction:column;gap:3px}
+details{border:1px solid var(--line);border-radius:10px;padding:0 12px}
+summary{min-height:46px;display:flex;align-items:center;font-weight:600;cursor:pointer}
+details[open] summary{border-bottom:1px solid var(--line);margin-bottom:6px}
+.stk{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.stk input{width:84px;flex:none}
+.chrono{display:flex;align-items:center;gap:12px}
+.chrono .mono{font-size:22px}
+.qty{display:flex;align-items:center;gap:8px;flex:none}
+.qty b{min-width:26px;text-align:center;font:600 16px var(--f-mono)}
+.qbtn{width:40px;height:40px;border-radius:10px;border:1px solid var(--line);background:var(--bg);font-size:20px;line-height:1}
+.link{background:none;border:0;padding:0;text-align:left}
+
+/* onglets */
+.tabs{position:fixed;left:0;right:0;bottom:0;z-index:6;background:var(--surface);border-top:1px solid var(--line);
+  padding:6px max(16px,env(safe-area-inset-right,0px)) calc(6px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
+.tabs-in{max-width:560px;margin:0 auto;display:grid;grid-template-columns:repeat(5,1fr);gap:2px}
+.tab{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;min-height:52px;background:none;border:0;border-radius:10px;font-size:11.5px;font-weight:600;color:var(--ink2);min-width:0}
+.tab svg{width:24px;height:24px;stroke:currentColor;fill:none;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.tab.on{color:var(--accent)}
+#toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(84px + env(safe-area-inset-bottom,0px));z-index:30;background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:999px;font-size:14px;font-weight:500;max-width:90%;text-align:center}
+@media (prefers-reduced-motion:no-preference){.sb i,.pct{transition:background .3s}}
+</style>
+
+<header class="top" id="top">
+  <div class="word"><b>APEX</b><span>GARAGE</span></div>
+  <button class="vchip" id="vchip" data-a="vehicles" aria-label="Changer de véhicule"></button>
+</header>
+<main id="main" aria-live="polite"></main>
+<nav class="tabs" aria-label="Navigation principale"><div class="tabs-in" id="tabs"></div></nav>
+<div id="sheet" hidden></div>
+<div id="toast" role="status" aria-live="polite" hidden></div>
+
+<script>
+(function(){
+'use strict';
+/* ============ constantes ============ */
+var SYS=[
+ {id:'moteur',n:'Moteur',subs:['Lubrification','Distribution','Refroidissement','Admission & carburant','Allumage','Accessoires']},
+ {id:'trans',n:'Transmission',subs:['Embrayage','Boîte de vitesses','Transmission & cardans']},
+ {id:'chassis',n:'Châssis & liaison au sol',subs:['Freinage','Suspension','Direction','Pneus & roues']},
+ {id:'elec',n:'Électrique',subs:['Batterie & charge','Démarrage','Éclairage & essuyage']},
+ {id:'carro',n:'Carrosserie & habitacle',subs:['Climatisation & habitacle','Carrosserie','Vitrage']}
+];
+var PRE=[
+['Huile moteur','moteur','Lubrification',10000,12],['Filtre à huile','moteur','Lubrification',10000,12],
+['Courroie de distribution','moteur','Distribution',120000,60],['Pompe à eau','moteur','Distribution',120000,60],
+['Liquide de refroidissement','moteur','Refroidissement',60000,48],['Filtre à air','moteur','Admission & carburant',20000,12],
+['Filtre à carburant','moteur','Admission & carburant',40000,24],['Bougies','moteur','Allumage',60000,48],
+['Courroie d’accessoires','moteur','Accessoires',100000,60],['Embrayage','trans','Embrayage',150000,0],
+['Huile de boîte','trans','Boîte de vitesses',80000,72],['Soufflets de cardan','trans','Transmission & cardans',120000,0],
+['Plaquettes avant','chassis','Freinage',40000,36],['Plaquettes arrière','chassis','Freinage',60000,48],
+['Disques avant','chassis','Freinage',80000,72],['Liquide de frein','chassis','Freinage',0,24],
+['Amortisseurs avant','chassis','Suspension',80000,96],['Amortisseurs arrière','chassis','Suspension',80000,96],
+['Biellettes & rotules','chassis','Direction',100000,0],['Pneus avant','chassis','Pneus & roues',40000,60],
+['Pneus arrière','chassis','Pneus & roues',40000,60],['Roulements de roue','chassis','Pneus & roues',150000,0],
+['Batterie 12 V','elec','Batterie & charge',0,60],['Alternateur','elec','Batterie & charge',200000,0],
+['Démarreur','elec','Démarrage',200000,0],['Balais d’essuie-glace','elec','Éclairage & essuyage',0,12],
+['Filtre d’habitacle','carro','Climatisation & habitacle',15000,12],['Recharge climatisation','carro','Climatisation & habitacle',0,24]
+];
+var SEV={ville:1.25,mixte:1,route:0.9,intensif:1.4};
+var USAGE=[['ville','Urbain, trajets courts (×1,25)'],['mixte','Mixte (×1)'],['route','Route et autoroute (×0,9)'],['intensif','Intensif, remorquage, piste (×1,4)']];
+var FUELS=['Diesel','Essence','GPL','Hybride','Électrique'];
+var EXPC=['Assurance','Vignette & taxes','Contrôle technique','Péage','Parking','Lavage','Additif (AdBlue…)','Accessoires','Financement','Amende','Autre'];
+var STKC=['Huile','Filtre','Freinage','Liquide','Ampoule','Visserie','Pneu','Autre'];
+var LBL={ok:'Bon',warn:'À prévoir',crit:'Critique',na:'À renseigner'};
+var MONS=['jan','fév','mar','avr','mai','juin','juil','août','sep','oct','nov','déc'];
+var LS='apexgarage.v1';
+var ICON={
+ cockpit:'<path d="M4 17a8 8 0 1 1 16 0"/><path d="M12 17l4-6"/><path d="M4 20h16"/>',
+ xray:'<path d="M3 15v-3l2-4h9l4 4h3v3"/><circle cx="7.5" cy="16.5" r="2"/><circle cx="16.5" cy="16.5" r="2"/>',
+ maint:'<path d="M14.5 6.5a4 4 0 0 0-5 5L4 17l3 3 5.5-5.5a4 4 0 0 0 5-5l-2.5 2.5-2.5-.5-.5-2.5z"/>',
+ budget:'<rect x="3" y="6" width="18" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/><path d="M6 9v.01M18 15v.01"/>',
+ shop:'<path d="M3 8l9-4 9 4v9l-9 4-9-4z"/><path d="M3 8l9 4 9-4M12 12v9"/>',
+ fuel:'<path d="M5 20V6a2 2 0 0 1 2-2h5a2 2 0 0 1 2 2v14M4 20h11"/><path d="M14 9h2l2 2v6a1.5 1.5 0 0 0 3 0v-5l-3-3"/>',
+ coin:'<circle cx="12" cy="12" r="8"/><path d="M12 8v8M9.5 10h4a1.5 1.5 0 0 1 0 3h-3a1.5 1.5 0 0 0 0 3h4"/>',
+ volt:'<path d="M13 3L5 13h6l-1 8 8-10h-6z"/>'
+};
+function ico(n){return '<svg viewBox="0 0 24 24" aria-hidden="true">'+ICON[n]+'</svg>';}
+var TABS=[['cockpit','Cockpit'],['xray','Rayon X'],['maint','Entretien'],['budget','Budget'],['shop','Atelier']];
+
+/* codes défauts courants : [titre, causes probables, gravité 1-3] */
+var DTC={
+P0100:['Débitmètre d’air (MAF) : circuit','Débitmètre encrassé ou défaillant, connecteur, prise d’air',2],
+P0101:['Débitmètre d’air (MAF) : plage ou performance','Débitmètre encrassé, filtre à air colmaté, fuite d’admission',2],
+P0102:['Débitmètre d’air (MAF) : signal bas','Câblage, connecteur, débitmètre défaillant',2],
+P0103:['Débitmètre d’air (MAF) : signal haut','Câblage en court-circuit, débitmètre défaillant',2],
+P0105:['Capteur de pression d’admission (MAP) : circuit','Capteur, durite de dépression, câblage',2],
+P0110:['Sonde de température d’air d’admission : circuit','Sonde, connecteur, câblage',1],
+P0115:['Sonde de température du liquide de refroidissement : circuit','Sonde, connecteur, câblage',2],
+P0117:['Sonde de température du liquide : signal bas','Sonde en court-circuit, câblage',2],
+P0118:['Sonde de température du liquide : signal haut','Sonde ou câblage coupé, connecteur',2],
+P0125:['Température du liquide insuffisante pour la boucle fermée','Thermostat bloqué ouvert, sonde de température',1],
+P0128:['Thermostat : température sous le seuil attendu','Thermostat bloqué ouvert, niveau de liquide, sonde',1],
+P0130:['Sonde lambda amont (banc 1) : circuit','Sonde, câblage, fuite d’échappement',2],
+P0133:['Sonde lambda amont (banc 1) : réponse lente','Sonde vieillissante, fuite d’échappement',2],
+P0135:['Sonde lambda amont (banc 1) : chauffage','Résistance de chauffage, fusible, câblage',2],
+P0141:['Sonde lambda aval (banc 1) : chauffage','Résistance de chauffage, fusible, câblage',1],
+P0171:['Mélange trop pauvre (banc 1)','Prise d’air, débitmètre sale, pression de carburant faible, injecteurs',2],
+P0172:['Mélange trop riche (banc 1)','Injecteur qui fuit, débitmètre, sonde lambda, pression de carburant',2],
+P0174:['Mélange trop pauvre (banc 2)','Prise d’air, débitmètre sale, pression de carburant faible',2],
+P0175:['Mélange trop riche (banc 2)','Injecteur qui fuit, débitmètre, sonde lambda',2],
+P0200:['Injecteur : circuit','Câblage, injecteur, calculateur',3],
+P0201:['Injecteur cylindre 1 : circuit','Injecteur ou câblage du cylindre 1',3],
+P0202:['Injecteur cylindre 2 : circuit','Injecteur ou câblage du cylindre 2',3],
+P0203:['Injecteur cylindre 3 : circuit','Injecteur ou câblage du cylindre 3',3],
+P0204:['Injecteur cylindre 4 : circuit','Injecteur ou câblage du cylindre 4',3],
+P0217:['Surchauffe moteur','Niveau de liquide, thermostat, pompe à eau, ventilateur, radiateur. Arrête-toi si le voyant s’allume',3],
+P0230:['Pompe à carburant : circuit primaire','Relais, fusible, pompe, câblage',3],
+P0234:['Suralimentation excessive (turbo)','Électrovanne de pression, géométrie variable bloquée, wastegate',3],
+P0299:['Sous-suralimentation (turbo)','Fuite sur le circuit d’air, durites, turbo, électrovanne, FAP colmaté',2],
+P0300:['Ratés d’allumage multiples ou aléatoires','Bougies, bobines, injecteurs, prise d’air, mélange',3],
+P0301:['Raté d’allumage cylindre 1','Bougie, bobine ou injecteur du cylindre 1',3],
+P0302:['Raté d’allumage cylindre 2','Bougie, bobine ou injecteur du cylindre 2',3],
+P0303:['Raté d’allumage cylindre 3','Bougie, bobine ou injecteur du cylindre 3',3],
+P0304:['Raté d’allumage cylindre 4','Bougie, bobine ou injecteur du cylindre 4',3],
+P0325:['Capteur de cliquetis : circuit','Capteur, câblage, couple de serrage du capteur',1],
+P0335:['Capteur de position du vilebrequin : circuit','Capteur, câblage, cible dentée. Risque de calage',3],
+P0340:['Capteur de position de l’arbre à cames : circuit','Capteur, câblage, calage de distribution',3],
+P0401:['Recirculation des gaz (EGR) : débit insuffisant','Vanne EGR encrassée, conduits colmatés',1],
+P0402:['Recirculation des gaz (EGR) : débit excessif','Vanne EGR bloquée ouverte',2],
+P0403:['Vanne EGR : circuit','Câblage, vanne EGR',2],
+P0420:['Efficacité du catalyseur sous le seuil (banc 1)','Catalyseur usé, sonde lambda aval, fuite d’échappement',2],
+P0430:['Efficacité du catalyseur sous le seuil (banc 2)','Catalyseur usé, sonde lambda aval, fuite d’échappement',2],
+P0442:['Système EVAP : petite fuite','Bouchon de réservoir, durites EVAP, électrovanne de purge',1],
+P0455:['Système EVAP : fuite importante','Bouchon de réservoir absent ou mal serré, durite arrachée',1],
+P0456:['Système EVAP : très petite fuite','Bouchon de réservoir, joints, durites EVAP',1],
+P0500:['Capteur de vitesse du véhicule','Capteur, câblage, couronne dentée',2],
+P0505:['Régulation du ralenti','Vanne de ralenti ou papillon encrassé, prise d’air',1],
+P0507:['Ralenti trop élevé','Prise d’air, papillon encrassé, régulation de ralenti',1],
+P0560:['Tension du système','Batterie, alternateur, masses',2],
+P0562:['Tension du système trop basse','Batterie faible, alternateur, courroie, cosses',2],
+P0563:['Tension du système trop haute','Régulateur d’alternateur défaillant',3],
+P0606:['Calculateur moteur : défaut processeur','Calculateur, alimentation, masses',3],
+P0700:['Boîte automatique : défaut signalé','Lire les codes spécifiques de la boîte',2],
+P0715:['Capteur de vitesse d’entrée de boîte : circuit','Capteur, câblage',2],
+P0730:['Rapport de boîte incorrect','Niveau et état de l’huile, électrovannes, boîte',3],
+P2002:['Filtre à particules (FAP) : efficacité sous le seuil','FAP colmaté ou fissuré, capteur de pression différentielle',2],
+P2452:['Capteur de pression différentielle du FAP : circuit','Capteur, durites de prise de pression, câblage',2],
+P2463:['Filtre à particules (FAP) : accumulation de suie','Régénérations incomplètes (trajets courts), capteur, injection',2],
+U0100:['Perte de communication avec le calculateur moteur','Batterie, masses, calculateur, bus CAN',3],
+U0121:['Perte de communication avec le module ABS','Module ABS, câblage du bus CAN, alimentation',2],
+U0140:['Perte de communication avec le module carrosserie (BCM)','Module BCM, câblage, alimentation',2],
+C0035:['Capteur de vitesse de roue avant gauche : circuit','Capteur ABS, câblage, couronne dentée',2],
+C0040:['Capteur de vitesse de roue avant droite : circuit','Capteur ABS, câblage, couronne dentée',2]
+};
+
+/* ============ utilitaires ============ */
+var S=null, ui={tab:'cockpit',open:null,shop:'stock',per:'12',more:{}}, sheetSave=null, sheetCleanup=null, ctx={};
+function $(s,r){return (r||document).querySelector(s);}
+function $$(s,r){return Array.prototype.slice.call((r||document).querySelectorAll(s));}
+function esc(s){return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+function uid(){return Math.random().toString(36).slice(2,9);}
+function pad(n){return String(n).padStart(2,'0');}
+function ymd(d){return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());}
+function today(){return ymd(new Date());}
+function pd(s){var a=String(s).split('-').map(Number);return new Date(a[0],(a[1]||1)-1,a[2]||1);}
+function addDays(s,n){var d=pd(s);d.setDate(d.getDate()+n);return ymd(d);}
+function addMonths(s,n){var d=pd(s);d.setMonth(d.getMonth()+n);return ymd(d);}
+function daysBetween(a,b){return Math.round((pd(b)-pd(a))/864e5);}
+function fdate(s){return s?pd(s).toLocaleDateString('fr-FR',{day:'numeric',month:'short',year:'numeric'}):'—';}
+function fnum(n,d){d=d||0;return (n==null||n===''||isNaN(n))?'—':Number(n).toLocaleString('fr-FR',{minimumFractionDigits:d,maximumFractionDigits:d});}
+function money(n,d){return fnum(n,d||0)+' '+S.set.cur;}
+function fmin(m){m=Math.round(m||0);if(!m)return '—';return m>=60?Math.floor(m/60)+' h '+pad(m%60):m+' min';}
+function fdays(d){return d>=60?Math.round(d/30.4)+' mois':d+' j';}
+function cur(){return S&&(S.vehicles.find(function(v){return v.id===S.active;})||S.vehicles[0])||null;}
+function toast(t){var e=$('#toast');e.textContent=t;e.hidden=false;clearTimeout(toast.t);toast.t=setTimeout(function(){e.hidden=true;},2600);}
+
+/* ============ usure, santé, calculs ============ */
+function st(h){return h==null?'na':h<25?'crit':h<60?'warn':'ok';}
+function wear(p,v){
+  var sev=SEV[v.usage]||1, wk=null, wt=null, kmSince=null, days=null;
+  if(p.ikm>0&&p.km!=null){kmSince=Math.max(0,v.odo-p.km);wk=kmSince*sev/p.ikm;}
+  if(p.imo>0&&p.date){days=Math.max(0,daysBetween(p.date,today()));wt=days/(p.imo*30.4375);}
+  if(wk==null&&wt==null)return null;
+  var w=Math.max(wk==null?0:wk,wt==null?0:wt);
+  return {h:Math.max(0,Math.min(100,Math.round(100*(1-w)))),w:w,wk:wk,wt:wt,sev:sev,kmSince:kmSince,days:days,
+    remKm:wk!=null?Math.round(p.ikm/sev-kmSince):null, remD:wt!=null?Math.round(p.imo*30.4375-days):null};
+}
+function remTxt(w){
+  var a=[];
+  if(w.remKm!=null)a.push(w.remKm>=0?fnum(w.remKm)+' km restants':'dépassé de '+fnum(-w.remKm)+' km');
+  if(w.remD!=null)a.push(w.remD>=0?fdays(w.remD)+' restants':'dépassé de '+fdays(-w.remD));
+  return a.join(' · ');
+}
+function vScore(v){
+  var hs=v.parts.map(function(p){return wear(p,v);}).filter(Boolean).map(function(w){return w.h;});
+  if(!hs.length)return null;
+  var mean=hs.reduce(function(a,b){return a+b;},0)/hs.length;
+  return Math.round(0.7*mean+0.3*Math.min.apply(null,hs));
+}
+function sScore(v,id){
+  var hs=v.parts.filter(function(p){return p.sys===id;}).map(function(p){return wear(p,v);}).filter(Boolean).map(function(w){return w.h;});
+  return hs.length?Math.round(hs.reduce(function(a,b){return a+b;},0)/hs.length):null;
+}
+function alerts(v){
+  return v.parts.map(function(p){return {p:p,w:wear(p,v)};}).filter(function(x){return x.w&&x.w.h<60;}).sort(function(a,b){return a.w.h-b.w.h;});
+}
+function fuelCalc(v){
+  var f=v.fuels.slice().sort(function(a,b){return a.km-b.km||String(a.date).localeCompare(b.date);});
+  var last=null,lit=0,out=[];
+  f.forEach(function(e){
+    var cons=null,segL=null,segK=null;
+    if(last!=null)lit+=e.qty;
+    if(e.full){
+      if(last!=null&&e.km>last){segL=lit;segK=e.km-last;cons=lit/segK*100;}
+      last=e.km;lit=0;
+    }
+    out.push({e:e,cons:cons,segL:segL,segK:segK});
+  });
+  return out;
+}
+function fuelAvg(v){
+  var L=0,K=0;
+  fuelCalc(v).forEach(function(x){if(x.cons!=null){L+=x.segL;K+=x.segK;}});
+  return K>0?L/K*100:null;
+}
+function costRows(v){
+  var r=[];
+  v.fuels.forEach(function(e){r.push({date:e.date,c:'fuel',a:+e.total||0});});
+  v.logs.forEach(function(l){r.push({date:l.date,c:'maint',a:(+l.costParts||0)+(+l.costLabor||0)});});
+  v.exps.forEach(function(x){r.push({date:x.date,c:'other',a:+x.amount||0,sub:x.cat});});
+  return r;
+}
+function kmAt(v,date){
+  var pts=[].concat(v.fuels.map(function(e){return [e.date,e.km];}),v.logs.map(function(e){return [e.date,e.km];}),v.tests.map(function(e){return [e.date,e.km];}))
+    .filter(function(p){return p[1]!=null;}).sort(function(a,b){return a[0].localeCompare(b[0]);});
+  var r=null;pts.forEach(function(p){if(p[0]<=date)r=p[1];});
+  return r!=null?r:(pts.length?pts[0][1]:v.kmStart);
+}
+function tco(v,per){
+  var from=per==='12'?addMonths(today(),-12):'0000-00-00';
+  var rows=costRows(v).filter(function(r){return r.date>=from;});
+  var t={fuel:0,maint:0,ins:0,other:0,depr:0};
+  rows.forEach(function(r){
+    if(r.c==='fuel')t.fuel+=r.a;else if(r.c==='maint')t.maint+=r.a;
+    else if(['Assurance','Vignette & taxes','Contrôle technique'].indexOf(r.sub)>=0)t.ins+=r.a;else t.other+=r.a;
+  });
+  var kmAll=v.odo-v.kmStart;
+  var km=per==='12'?v.odo-kmAt(v,from):kmAll;
+  if(v.buy>0&&v.value>0&&v.buy>v.value){
+    t.depr=per==='12'?(kmAll>0?(v.buy-v.value)*Math.min(1,Math.max(0,km)/kmAll):0):(v.buy-v.value);
+  }
+  t.total=t.fuel+t.maint+t.ins+t.other+t.depr;
+  t.km=km;t.prk=km>0?t.total/km:null;
+  return t;
+}
+function monthly(v){
+  var now=new Date(),keys=[],i;
+  for(i=11;i>=0;i--){var d=new Date(now.getFullYear(),now.getMonth()-i,1);keys.push(d.getFullYear()+'-'+pad(d.getMonth()+1));}
+  var m={};keys.forEach(function(k){m[k]={k:k,fuel:0,maint:0,other:0};});
+  costRows(v).forEach(function(r){var k=r.date.slice(0,7);if(m[k])m[k][r.c]+=r.a;});
+  return keys.map(function(k){return m[k];});
+}
+function niceMax(x){var p=Math.pow(10,Math.floor(Math.log10(x))),n=x/p;return (n<=1?1:n<=2?2:n<=5?5:10)*p;}
+function kfmt(v){return v>=1000?fnum(v/1000,v%1000?1:0)+' k':fnum(v);}
+
+function judge(t){
+  var r=[];
+  if(t.rest!=null)r.push(t.rest>=12.6?['ok','Repos','Batterie bien chargée.']:t.rest>=12.4?['ok','Repos','Charge correcte, environ 75 %.']:t.rest>=12.2?['warn','Repos','Charge faible : recharge puis refais le test.']:['crit','Repos','Batterie très déchargée ou fatiguée.']);
+  if(t.crank!=null)r.push(t.crank>=10?['ok','Au démarrage','La tension tient pendant le lancement.']:t.crank>=9.6?['warn','Au démarrage','Limite basse : batterie ou connexions à surveiller.']:['crit','Au démarrage','Chute trop forte : batterie fatiguée, cosses ou démarreur à contrôler.']);
+  if(t.run!=null)r.push(t.run>=13.7&&t.run<=14.8?['ok','Moteur tournant','Alternateur : charge normale.']:(t.run>=13.2&&t.run<13.7)?['warn','Moteur tournant','Charge un peu faible : courroie, alternateur ou câbles.']:(t.run>14.8&&t.run<=15.2)?['warn','Moteur tournant','Charge un peu haute : régulateur à surveiller.']:t.run<13.2?['crit','Moteur tournant','Pas de charge suffisante : alternateur, courroie ou câbles.']:['crit','Moteur tournant','Surcharge : régulateur d’alternateur à faire contrôler.']);
+  if(t.sec!=null)r.push(t.sec<=1?['ok','Temps de lancement','Démarrage rapide.']:t.sec<=2?['warn','Temps de lancement','Un peu long : surveille batterie, bougies ou alimentation.']:['crit','Temps de lancement','Trop long : démarreur, allumage ou alimentation en carburant à vérifier.']);
+  return r;
+}
+function worst(r){return r.some(function(x){return x[0]==='crit';})?'crit':r.some(function(x){return x[0]==='warn';})?'warn':r.length?'ok':'na';}
+function decodeVin(x){
+  x=x.trim().toUpperCase();
+  if(x.length!==17)return 'Un VIN contient 17 caractères ('+x.length+' saisis).';
+  if(/[IOQ]/.test(x)||!/^[A-Z0-9]{17}$/.test(x))return 'VIN invalide : lettres I, O et Q interdites, pas de symboles.';
+  var c=x[0],reg=/[A-H]/.test(c)?'Afrique':/[J-R]/.test(c)?'Asie':/[S-Z]/.test(c)?'Europe':/[1-5]/.test(c)?'Amérique du Nord':/[6-7]/.test(c)?'Océanie':'Amérique du Sud';
+  var i='ABCDEFGHJKLMNPRSTVWXY123456789'.indexOf(x[9]);
+  var yr=i<0?'inconnue':(2010+i)+' ou '+(1980+i);
+  return 'Région : '+reg+'. Code constructeur (WMI) : '+x.slice(0,3)+'. Année modèle d’après le 10e caractère : '+yr+'.';
+}
+function decodeDtc(code){
+  var c=code.trim().toUpperCase();
+  if(!/^[PBCU][0-9A-F]{4}$/.test(c))return null;
+  if(DTC[c])return {code:c,t:DTC[c][0],cause:DTC[c][1],g:DTC[c][2],known:true};
+  var grp={P:'Groupe motopropulseur',B:'Carrosserie',C:'Châssis',U:'Réseau de communication'}[c[0]];
+  var typ={'0':'code générique (norme SAE)','1':'code propre au constructeur','2':'code générique ou constructeur','3':'code générique ou constructeur'}[c[1]]||'code';
+  var sub='';
+  if(c[0]==='P'){sub={'1':'carburant et air','2':'carburant et air (injection)','3':'allumage ou ratés d’allumage','4':'contrôle des émissions','5':'vitesse et ralenti','6':'calculateur et sorties','7':'transmission','8':'transmission','9':'transmission'}[c[2]]||'';}
+  return {code:c,t:grp+' : '+typ+(sub?', '+sub:''),cause:'Code absent de la liste intégrée. Cherche sa définition pour ta marque et ton modèle.',g:2,known:false};
+}
+
+/* ============ données : création, graine, stockage ============ */
+function normV(v){['parts','fuels','logs','exps','tests','dtcs'].forEach(function(k){if(!Array.isArray(v[k]))v[k]=[];});v.odo=+v.odo||0;v.kmStart=v.kmStart==null?v.odo:+v.kmStart;return v;}
+function newV(o){
+  return normV(Object.assign({id:uid(),name:'',make:'',model:'',year:null,plate:'',vin:'',fuel:'Diesel',usage:'mixte',odo:0,kmStart:null,buy:null,value:null,since:today(),example:false},o||{}));
+}
+function loadPre(v,known){
+  PRE.forEach(function(r,i){
+    var p={id:uid(),name:r[0],sys:r[1],sub:r[2],oem:'',brand:'',date:null,km:null,price:null,torque:null,ikm:r[3],imo:r[4],note:''};
+    if(known){
+      var f=known[i%known.length],t=today();
+      if(r[3])p.km=Math.max(0,v.odo-Math.round(f*r[3]/(SEV[v.usage]||1)));
+      if(r[4])p.date=addDays(t,-Math.round(f*r[4]*30.4375));
+    }
+    v.parts.push(p);
+  });
+}
+function seed(){
+  var t=today(),odo=118400;
+  var v=newV({name:'Clio dCi',make:'Renault',model:'Clio 4 (exemple)',year:2016,fuel:'Diesel',usage:'ville',odo:odo,kmStart:96000,buy:1450000,value:1100000,example:true,since:addDays(t,-240)});
+  loadPre(v,[0.15,0.35,0.6,0.8,0.95,1.1,0.25,0.5,0.7,0.3,0.45,0.9,0.2,0.65,0.85,0.4,0.55,0.1,0.75,1.05,0.3,0.5,0.6,0.2,0.35,0.7,0.15,0.9]);
+  v.parts.forEach(function(p){
+    if(p.name==='Huile moteur'||p.name==='Filtre à huile'){p.km=odo-1800;p.date=addDays(t,-70);}
+    if(p.name==='Plaquettes avant'){p.km=odo-9000;p.date=addDays(t,-200);}
+  });
+  var oil=v.parts.filter(function(p){return p.name==='Huile moteur'||p.name==='Filtre à huile';}).map(function(p){return p.id;});
+  v.logs.push({id:uid(),date:addDays(t,-70),km:odo-1800,type:'Pro',title:'Vidange et filtre à huile',shop:'Garage (exemple)',costParts:6200,costLabor:2500,minutes:0,partIds:oil,stock:[],steps:[],note:''});
+  v.logs.push({id:uid(),date:addDays(t,-200),km:odo-9000,type:'DIY',title:'Plaquettes avant',shop:'',costParts:4800,costLabor:0,minutes:95,partIds:[],stock:[],steps:[{t:'Roue déposée',d:true},{t:'Étrier dégagé',d:true},{t:'Plaquettes remplacées',d:true}],note:''});
+  for(var i=0;i<7;i++){
+    var q=41+(i%3-1)*1.5;
+    v.fuels.push({id:uid(),date:addDays(t,-(6-i)*24-2),km:odo-(6-i)*650,qty:+q.toFixed(1),ppl:31,total:Math.round(q*31),full:true,dash:5.8,note:''});
+  }
+  v.exps.push({id:uid(),date:addDays(t,-120),cat:'Assurance',amount:38000,note:'Annuelle'});
+  v.exps.push({id:uid(),date:addDays(t,-200),cat:'Vignette & taxes',amount:4000,note:''});
+  v.exps.push({id:uid(),date:addDays(t,-30),cat:'Péage',amount:600,note:''});
+  v.exps.push({id:uid(),date:addDays(t,-12),cat:'Lavage',amount:800,note:''});
+  v.tests.push({id:uid(),date:addDays(t,-40),km:odo-2600,rest:12.5,crank:10.1,run:14.2,sec:0.8,note:''});
+  return {ver:2,u:0,set:{cur:'DA'},active:v.id,vehicles:[v],stock:[
+    {id:uid(),name:'Huile moteur 5W30',cat:'Huile',qty:2,unit:'bidon 5 L',min:1,note:'',ex:true},
+    {id:uid(),name:'Filtre à huile',cat:'Filtre',qty:2,unit:'pièce',min:1,note:'',ex:true},
+    {id:uid(),name:'Plaquettes avant',cat:'Freinage',qty:0,unit:'jeu',min:1,note:'',ex:true},
+    {id:uid(),name:'Ampoules H7',cat:'Ampoule',qty:4,unit:'pièce',min:2,note:'',ex:true}]};
+}
+function emptyState(){return {ver:2,u:Date.now(),set:{cur:'DA'},active:null,vehicles:[],stock:[]};}
+function loadLocal(){try{var t=localStorage.getItem(LS);return t?JSON.parse(t):null;}catch(e){return null;}}
+function saveLocal(){try{localStorage.setItem(LS,JSON.stringify(S));}catch(e){}}
+
+var DBC=null, dirty={meta:false,v:{},gone:{}}, syncState='local', flushing=false, timer=null;
+function queueSync(){if(!DBC)return;clearTimeout(timer);timer=setTimeout(flush,900);}
+function clone(o){return JSON.parse(JSON.stringify(o));}
+async function flush(){
+  if(!DBC||flushing)return;
+  flushing=true;
+  try{
+    if(dirty.meta){
+      dirty.meta=false;
+      await DBC.doc('meta').set(clone({u:S.u,set:S.set,active:S.active,order:S.vehicles.map(function(v){return v.id;}),stock:S.stock}));
+    }
+    var ids=Object.keys(dirty.v);
+    for(var i=0;i<ids.length;i++){
+      var v=S.vehicles.find(function(x){return x.id===ids[i];});
+      delete dirty.v[ids[i]];
+      if(v)await DBC.doc('veh_'+v.id).set(clone(v));
+    }
+    var gone=Object.keys(dirty.gone);
+    for(var j=0;j<gone.length;j++){delete dirty.gone[gone[j]];await DBC.doc('veh_'+gone[j]).delete();}
+    syncState='ok';
+  }catch(e){
+    syncState='err';dirty.meta=true;S.vehicles.forEach(function(v){dirty.v[v.id]=1;});
+    clearTimeout(timer);timer=setTimeout(flush,20000);
+  }
+  flushing=false;
+  if(dirty.meta||Object.keys(dirty.v).length||Object.keys(dirty.gone).length)queueSync();
+  if(ui.tab==='shop'&&ui.shop==='data')render();
+}
+function pushAll(){dirty.meta=true;S.vehicles.forEach(function(v){dirty.v[v.id]=1;});queueSync();}
+function commit(vid){
+  S.u=Date.now();dirty.meta=true;if(vid)dirty.v[vid]=1;
+  saveLocal();queueSync();render();
+}
+function rebuild(docs){
+  var m=docs.meta;
+  return {ver:2,u:m.u||0,set:m.set||{cur:'DA'},active:m.active||null,
+    vehicles:(m.order||[]).map(function(id){return docs['veh_'+id];}).filter(Boolean).map(normV),stock:m.stock||[]};
+}
+async function initSync(){
+  try{
+    var C=window.claude;if(!C||!C.use)return;
+    var db=await C.use('db'),user=await C.use('user');
+    var id=user?await user.id():null;
+    if(!db||!id){syncState='local';return;}
+    DBC=db.collection('data/users/'+id);
+    var snap=await DBC.get(),docs={};
+    snap.docs.forEach(function(d){docs[d.id]=clone(d.data());});
+    if(docs.meta){
+      var r=rebuild(docs);
+      if(r.u>S.u){S=r;saveLocal();syncState='ok';}
+      else if(S.u>r.u){pushAll();}
+      else syncState='ok';
+    }else{pushAll();}
+    if(syncState!=='ok')syncState='ok';
+    render();
+  }catch(e){syncState='local';DBC=null;}
+}
+
+/* ============ composants visuels ============ */
+function segbar(h){
+  var n=h==null?0:Math.ceil(h/10),s='',i;
+  for(i=0;i<10;i++)s+='<i class="'+(i<n?'on':'')+'"></i>';
+  return '<span class="sb" aria-hidden="true">'+s+'</span>';
+}
+function plate(v){return v.plate?'<span class="plate">'+esc(v.plate)+'</span>':'';}
+function gauge(sc){
+  var s=st(sc),R=80,L=Math.PI*R,i,t='';
+  for(i=0;i<=10;i++){
+    var a=Math.PI*(1-i/10),r2=(i%5===0?102:98);
+    t+='<line x1="'+(100+Math.cos(a)*92).toFixed(1)+'" y1="'+(100-Math.sin(a)*92).toFixed(1)+'" x2="'+(100+Math.cos(a)*r2).toFixed(1)+'" y2="'+(100-Math.sin(a)*r2).toFixed(1)+'" stroke="var(--ink2)" stroke-width="'+(i%5===0?2:1)+'" opacity=".6"/>';
+  }
+  var arc='M20 100A80 80 0 0 1 180 100';
+  return '<svg viewBox="0 0 200 118" class="gauge s-'+s+'" role="img" aria-label="Santé globale : '+(sc==null?'non calculée':sc+' pour cent')+'">'+t+
+    '<path d="'+arc+'" fill="none" stroke="var(--line)" stroke-width="14" stroke-linecap="round"/>'+
+    (sc==null?'':'<path d="'+arc+'" fill="none" stroke="var(--c)" stroke-width="14" stroke-linecap="round" stroke-dasharray="'+(L*sc/100).toFixed(1)+' '+L.toFixed(1)+'"/>')+
+    '<text x="100" y="92" text-anchor="middle" class="g-num">'+(sc==null?'—':sc)+'</text>'+
+    '<text x="100" y="113" text-anchor="middle" class="g-lbl">'+(sc==null?'À RENSEIGNER':'SANTÉ GLOBALE')+'</text></svg>';
+}
+function carSvg(v){
+  var pos=[[296,82],[196,108],[88,106],[252,56],[150,58]],dots='';
+  SYS.forEach(function(s,i){
+    var sc=sScore(v,s.id);
+    dots+='<g class="hot s-'+st(sc)+'" data-a="sys" data-id="'+s.id+'" tabindex="0" role="button" aria-label="'+esc(s.n)+' : '+(sc==null?'à renseigner':sc+' pour cent')+'"><circle cx="'+pos[i][0]+'" cy="'+pos[i][1]+'" r="14"/><text x="'+pos[i][0]+'" y="'+(pos[i][1]+5)+'" text-anchor="middle">'+(i+1)+'</text></g>';
+  });
+  return '<svg class="car" viewBox="0 0 360 150" role="group" aria-label="Schéma du véhicule avec les 5 systèmes">'+
+    '<line class="ground" x1="6" y1="128" x2="354" y2="128"/>'+
+    '<path class="body" d="M18 108V92Q20 80 40 76L92 68Q122 40 164 38H218Q254 42 274 68L322 76Q344 80 346 94V108Z"/>'+
+    '<path d="M104 68Q126 46 164 46V68ZM176 46H216Q244 50 258 68H176Z" fill="var(--surface)" stroke="var(--ink2)" stroke-width="1.5"/>'+
+    '<circle class="tire" cx="88" cy="108" r="21"/><circle class="rim" cx="88" cy="108" r="10"/>'+
+    '<circle class="tire" cx="276" cy="108" r="21"/><circle class="rim" cx="276" cy="108" r="10"/>'+dots+'</svg>';
+}
+function chart(m){
+  var W=340,H=164,L=36,B=24,T=8,R=4,iw=W-L-R,ih=H-T-B;
+  var mx=niceMax(Math.max.apply(null,m.map(function(x){return x.fuel+x.maint+x.other;}).concat([1])));
+  var bw=iw/12,s='';
+  [0,0.5,1].forEach(function(f){var y=T+ih*(1-f);s+='<line x1="'+L+'" x2="'+(W-R)+'" y1="'+y+'" y2="'+y+'" stroke="var(--line)"/><text x="'+(L-5)+'" y="'+(y+3)+'" text-anchor="end" class="ax">'+kfmt(mx*f)+'</text>';});
+  m.forEach(function(x,i){
+    var y=T+ih;
+    [['fuel','--c1'],['maint','--c2'],['other','--c3']].forEach(function(k){
+      var h=ih*x[k[0]]/mx;
+      if(h>0){y-=h;s+='<rect x="'+(L+i*bw+bw*0.16).toFixed(1)+'" y="'+y.toFixed(1)+'" width="'+(bw*0.68).toFixed(1)+'" height="'+Math.max(h,1).toFixed(1)+'" fill="var('+k[1]+')"/>';}
+    });
+    s+='<text x="'+(L+i*bw+bw/2).toFixed(1)+'" y="'+(H-8)+'" text-anchor="middle" class="ax">'+MONS[+x.k.slice(5,7)-1]+'</text>';
+  });
+  return '<svg viewBox="0 0 '+W+' '+H+'" class="chart" role="img" aria-label="Dépenses mensuelles sur 12 mois, carburant, entretien et autres frais">'+s+'</svg>';
+}
+function partRow(v,p){
+  var w=wear(p,v),s=st(w&&w.h);
+  return '<button class="row s-'+s+'" data-a="part" data-id="'+p.id+'"><span class="grow"><b>'+esc(p.name)+'</b><small>'+(w?esc((p.brand?p.brand+' · ':'')+remTxt(w)):'Dernier remplacement à renseigner')+'</small></span>'+segbar(w&&w.h)+'<span class="pct">'+(w?w.h+'%':'—')+'</span></button>';
+}
+function needV(msg){
+  return '<section class="sec"><div class="list"><div class="empty"><p>'+esc(msg||'Ajoute ta première voiture pour commencer.')+'</p></div></div><button class="btn" data-a="newVeh">Ajouter une voiture</button></section>';
+}
+
+/* ============ écrans ============ */
+function vCockpit(){
+  var v=cur();if(!v)return needV();
+  var sc=vScore(v),al=alerts(v),low=S.stock.filter(function(i){return i.qty<=i.min;});
+  var t=today(),mth=t.slice(0,7),mt=0;
+  costRows(v).forEach(function(r){if(r.date.slice(0,7)===mth)mt+=r.a;});
+  var avg=fuelAvg(v),k=tco(v,'all'),unit=v.fuel==='Électrique'?'kWh':'L';
+  var h='';
+  if(v.example)h+='<div class="note"><span><b>Données d’exemple.</b> Ce véhicule montre comment l’application fonctionne. Ajoute ta voiture, puis supprime l’exemple.</span><span style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn sm" data-a="newVeh">Ajouter ma voiture</button><button class="btn sm danger" data-a="del" data-k="veh" data-id="'+v.id+'">Supprimer l’exemple</button></span></div>';
+  h+='<section class="hero s-'+st(sc)+'"><div class="hinfo"><div class="hrow">'+plate(v)+'<small>'+esc([v.make,v.model,v.year].filter(Boolean).join(' · '))+'</small></div><h1>'+esc(v.name)+'</h1><div class="odo"><span class="mono">'+fnum(v.odo)+'</span><span>km</span></div><button class="btn ghost sm" data-a="odo">Mettre à jour le km</button></div><div class="hg">'+gauge(sc)+'<span class="chip s-'+st(sc)+'">'+LBL[st(sc)]+'</span></div></section>';
+  h+='<div class="qa"><button data-a="fuel">'+ico('fuel')+'Plein</button><button data-a="log">'+ico('maint')+'Entretien</button><button data-a="exp">'+ico('coin')+'Dépense</button><button data-a="test">'+ico('volt')+'Démarrage</button></div>';
+  h+='<section class="sec"><div class="sec-h"><span class="lbl">À surveiller</span></div><div class="list">';
+  var n=0;
+  al.slice(0,5).forEach(function(x){n++;h+=partRow(v,x.p);});
+  low.slice(0,3).forEach(function(i){n++;h+='<button class="row s-crit" data-a="goStock"><span class="grow"><b>'+esc(i.name)+'</b><small>Stock : '+i.qty+' '+esc(i.unit)+' (seuil '+i.min+')</small></span><span class="chip s-crit">Stock bas</span></button>';});
+  if(!n)h+='<div class="empty">'+(v.parts.some(function(p){return wear(p,v);})?'Aucune alerte. Toutes les pièces suivies sont dans la plage prévue.':'Renseigne le dernier remplacement de tes pièces dans l’onglet Rayon X pour activer les alertes.')+'</div>';
+  h+='</div></section>';
+  h+='<section class="sec"><div class="sec-h"><span class="lbl">Finances</span></div><div class="mx"><div><small>Ce mois</small><b>'+money(mt)+'</b></div><div><small>Conso moyenne</small><b>'+(avg==null?'—':fnum(avg,1)+' '+unit+'/100')+'</b></div><div><small>Coût au km</small><b>'+(k.prk==null?'—':fnum(k.prk,1)+' '+S.set.cur)+'</b></div></div></section>';
+  if(S.vehicles.length>1){
+    h+='<section class="sec"><div class="sec-h"><span class="lbl">Mes véhicules</span></div><div class="list">'+S.vehicles.map(function(x){var s=vScore(x);return '<button class="row s-'+st(s)+'" data-a="pick" data-id="'+x.id+'"><span class="grow"><b>'+esc(x.name)+'</b><small>'+fnum(x.odo)+' km</small></span><span class="pct">'+(s==null?'—':s+'%')+'</span></button>';}).join('')+'</div></section>';
+  }
+  return h;
+}
+function vXray(){
+  var v=cur();if(!v)return needV();
+  var h='<section class="sec"><div class="sec-h"><h1 class="title">Rayon X</h1><button class="btn sm" data-a="newPart">Pièce</button></div>'+
+    '<div class="list" style="padding:10px 6px 4px">'+carSvg(v)+'</div>'+
+    '<div class="legend"><span class="chip s-ok">Bon, 60 % et plus</span><span class="chip s-warn">À prévoir</span><span class="chip s-crit">Critique, moins de 25 %</span><span class="chip s-na">À renseigner</span></div></section>';
+  if(!v.parts.length){
+    return h+'<section class="sec"><div class="list"><div class="empty">Aucune pièce suivie. Charge la liste type (moteur, freins, pneus, batterie, filtres…) puis renseigne le dernier remplacement de chaque pièce.</div></div><button class="btn" data-a="loadPre">Charger les '+PRE.length+' pièces types</button></section>';
+  }
+  h+='<section class="sec"><div class="sec-h"><span class="lbl">Systèmes</span></div><div class="list">';
+  SYS.forEach(function(s,i){
+    var ps=v.parts.filter(function(p){return p.sys===s.id;}),sc=sScore(v,s.id),open=ui.open===s.id;
+    h+='<div class="sysb"><button class="row s-'+st(sc)+'" data-a="sys" data-id="'+s.id+'" aria-expanded="'+open+'"><span class="num">'+(i+1)+'</span><span class="grow"><b>'+esc(s.n)+'</b><small>'+ps.length+' pièce'+(ps.length>1?'s':'')+'</small></span>'+segbar(sc)+'<span class="pct">'+(sc==null?'—':sc+'%')+'</span></button>';
+    if(open){
+      var subs=s.subs.slice();ps.forEach(function(p){if(subs.indexOf(p.sub)<0&&p.sub)subs.push(p.sub);});
+      subs.forEach(function(sb){var q=ps.filter(function(p){return p.sub===sb;});if(q.length)h+='<div class="sub">'+esc(sb)+'</div>'+q.map(function(p){return partRow(v,p);}).join('');});
+      var oth=ps.filter(function(p){return !p.sub;});if(oth.length)h+=oth.map(function(p){return partRow(v,p);}).join('');
+      h+='<button class="row" data-a="newPart" data-sys="'+s.id+'" style="color:var(--accent);font-weight:600;min-height:48px">Ajouter une pièce à ce système</button>';
+    }
+    h+='</div>';
+  });
+  h+='</div><small>Santé d’une pièce = 100 − la plus forte usure entre le kilométrage (× coefficient d’usage du véhicule) et le temps écoulé. Les intervalles proposés sont indicatifs : ajuste-les d’après le carnet d’entretien.</small></section>';
+  return h;
+}
+function vMaint(){
+  var v=cur();if(!v)return needV();
+  var due=v.parts.map(function(p){return {p:p,w:wear(p,v)};}).filter(function(x){return x.w;}).sort(function(a,b){return a.w.h-b.w.h;}).slice(0,5);
+  var logs=v.logs.slice().sort(function(a,b){return b.date.localeCompare(a.date)||b.km-a.km;});
+  var h='<section class="sec"><div class="sec-h"><h1 class="title">Entretien</h1><button class="btn sm" data-a="log">Enregistrer</button></div>';
+  h+='<span class="lbl">Prochaines échéances</span><div class="list">'+(due.length?due.map(function(x){return partRow(v,x.p);}).join(''):'<div class="empty">Renseigne le dernier remplacement des pièces dans Rayon X pour voir les échéances.</div>')+'</div></section>';
+  h+='<section class="sec"><div class="sec-h"><span class="lbl">Journal ('+logs.length+')</span></div><div class="list">';
+  if(!logs.length)h+='<div class="empty">Aucun entretien enregistré.</div>';
+  logs.forEach(function(l){var c=(+l.costParts||0)+(+l.costLabor||0);h+='<button class="row" data-a="logView" data-id="'+l.id+'"><span class="grow"><b>'+esc(l.title)+'</b><small>'+fdate(l.date)+' · '+fnum(l.km)+' km'+(l.shop?' · '+esc(l.shop):'')+(l.minutes?' · '+fmin(l.minutes):'')+'</small></span><span class="rt"><span class="chip '+(l.type==='DIY'?'k-diy':'k-pro')+'">'+(l.type==='DIY'?'Fait maison':'Garage')+'</span><small>'+(c?money(c):'—')+'</small></span></button>';});
+  h+='</div></section>';
+  return h;
+}
+function vBudget(){
+  var v=cur();if(!v)return needV();
+  var k=tco(v,ui.per),m=monthly(v),unit=v.fuel==='Électrique'?'kWh':'L';
+  var fc=fuelCalc(v).slice().reverse(),avg=fuelAvg(v);
+  var lastP=v.fuels.length?v.fuels.slice().sort(function(a,b){return b.date.localeCompare(a.date);})[0].ppl:null;
+  var h='<section class="sec"><h1 class="title">Budget</h1><div class="seg" role="group" aria-label="Période"><button class="'+(ui.per==='12'?'on':'')+'" data-a="per" data-v="12">12 derniers mois</button><button class="'+(ui.per==='all'?'on':'')+'" data-a="per" data-v="all">Depuis le début</button></div>';
+  h+='<div class="prk"><b>'+(k.prk==null?'—':fnum(k.prk,1))+'</b><span>'+esc(S.set.cur)+' par km · '+fnum(k.km)+' km parcourus · total '+money(k.total)+'</span></div></section>';
+  h+='<section class="sec"><span class="lbl">Dépenses par mois</span><div class="list" style="padding:12px 10px 8px">'+chart(m)+'</div><div class="keys"><span><i style="background:var(--c1)"></i>Carburant</span><span><i style="background:var(--c2)"></i>Entretien</span><span><i style="background:var(--c3)"></i>Autres frais</span></div></section>';
+  var parts=[['Carburant',k.fuel],['Entretien',k.maint],['Assurance et taxes',k.ins],['Autres frais',k.other],['Dépréciation',k.depr]];
+  h+='<section class="sec"><span class="lbl">Coût total de possession</span><div class="list tco">'+parts.map(function(x){return '<div class="row"><span class="grow"><b>'+x[0]+'</b><span class="bar"><i style="width:'+(k.total>0?Math.round(x[1]/k.total*100):0)+'%"></i></span></span><span class="mono">'+money(x[1])+'</span></div>';}).join('')+'</div>'+(v.buy>0&&v.value>0?'':'<small>Renseigne le prix d’achat et la valeur actuelle estimée du véhicule pour inclure la dépréciation.</small>')+'</section>';
+  h+='<section class="sec"><div class="sec-h"><span class="lbl">Pleins ('+v.fuels.length+')</span><button class="btn sm" data-a="fuel">Plein</button></div><div class="mx"><div><small>Conso moyenne</small><b>'+(avg==null?'—':fnum(avg,1))+'</b><small>'+unit+'/100 km</small></div><div><small>Dernier prix</small><b>'+(lastP==null?'—':fnum(lastP,2))+'</b><small>'+esc(S.set.cur)+'/'+unit+'</small></div><div><small>Pleins</small><b>'+v.fuels.length+'</b><small>enregistrés</small></div></div><div class="list">';
+  if(!fc.length)h+='<div class="empty">Aucun plein enregistré. Remplis le réservoir à chaque fois pour obtenir une consommation fiable.</div>';
+  fc.slice(0,ui.more.fuel?200:6).forEach(function(x){var e=x.e;h+='<button class="row" data-a="fuel" data-id="'+e.id+'"><span class="grow"><b>'+fnum(e.qty,1)+' '+unit+' · '+money(e.total)+'</b><small>'+fdate(e.date)+' · '+fnum(e.km)+' km'+(e.full?'':' · plein partiel')+(x.cons!=null&&e.dash?' · tableau de bord '+fnum(e.dash,1):'')+'</small></span><span class="rt">'+(x.cons!=null?'<b class="mono">'+fnum(x.cons,1)+'</b><small>'+unit+'/100</small>':'<small>—</small>')+'</span></button>';});
+  h+='</div>'+(fc.length>6&&!ui.more.fuel?'<button class="btn ghost sm" data-a="more" data-k="fuel">Voir tous les pleins</button>':'')+'</section>';
+  var ex=v.exps.slice().sort(function(a,b){return b.date.localeCompare(a.date);});
+  h+='<section class="sec"><div class="sec-h"><span class="lbl">Autres dépenses ('+ex.length+')</span><button class="btn sm" data-a="exp">Dépense</button></div><div class="list">';
+  if(!ex.length)h+='<div class="empty">Assurance, vignette, péages, lavage, contrôle technique…</div>';
+  ex.slice(0,ui.more.exp?200:6).forEach(function(e){h+='<button class="row" data-a="exp" data-id="'+e.id+'"><span class="grow"><b>'+esc(e.cat)+'</b><small>'+fdate(e.date)+(e.note?' · '+esc(e.note):'')+'</small></span><span class="mono">'+money(e.amount)+'</span></button>';});
+  h+='</div>'+(ex.length>6&&!ui.more.exp?'<button class="btn ghost sm" data-a="more" data-k="exp">Voir toutes les dépenses</button>':'')+'</section>';
+  return h;
+}
+function vShop(){
+  var h='<section class="sec"><h1 class="title">Atelier</h1><div class="seg" role="group" aria-label="Rubrique"><button class="'+(ui.shop==='stock'?'on':'')+'" data-a="shopTab" data-v="stock">Stock</button><button class="'+(ui.shop==='diag'?'on':'')+'" data-a="shopTab" data-v="diag">Diagnostic</button><button class="'+(ui.shop==='data'?'on':'')+'" data-a="shopTab" data-v="data">Données</button></div></section>';
+  if(ui.shop==='stock'){
+    h+='<section class="sec"><div class="sec-h"><span class="lbl">Pièces et consommables ('+S.stock.length+')</span><button class="btn sm" data-a="stockEdit">Article</button></div><div class="list">';
+    if(!S.stock.length)h+='<div class="empty">Ajoute l’huile, les filtres et les plaquettes que tu gardes au garage. Le stock diminue quand tu valides un entretien.</div>';
+    S.stock.forEach(function(i){
+      h+='<div class="row"><button class="grow link" data-a="stockEdit" data-id="'+i.id+'"><b>'+esc(i.name)+'</b><small>'+esc(i.cat)+' · '+esc(i.unit)+' · seuil '+i.min+'</small></button>'+(i.qty<=i.min?'<span class="chip s-crit">Bas</span>':'')+'<span class="qty"><button class="qbtn" data-a="stk" data-id="'+i.id+'" data-d="-1" aria-label="Retirer 1 '+esc(i.name)+'">−</button><b>'+i.qty+'</b><button class="qbtn" data-a="stk" data-id="'+i.id+'" data-d="1" aria-label="Ajouter 1 '+esc(i.name)+'">+</button></span></div>';
+    });
+    h+='</div></section>';
+  }else if(ui.shop==='diag'){
+    var v=cur();
+    if(!v)return h+needV();
+    var ts=v.tests.slice().sort(function(a,b){return b.date.localeCompare(a.date);});
+    h+='<section class="sec"><div class="sec-h"><span class="lbl">Test de démarrage</span><button class="btn sm" data-a="test">Nouveau test</button></div><div class="list">';
+    if(!ts.length)h+='<div class="empty">Mesure la tension de la batterie au repos, pendant le lancement et moteur tournant (avec un multimètre ou un testeur de prise allume-cigare). L’application analyse le résultat.</div>';
+    ts.slice(0,6).forEach(function(t){var w=worst(judge(t));h+='<button class="row s-'+w+'" data-a="test" data-id="'+t.id+'"><span class="grow"><b>'+fdate(t.date)+' · '+fnum(t.km)+' km</b><small>Repos '+fnum(t.rest,2)+' V · démarrage '+fnum(t.crank,2)+' V · charge '+fnum(t.run,2)+' V</small></span><span class="chip s-'+w+'">'+(w==='ok'?'Normal':w==='warn'?'À surveiller':w==='crit'?'Anormal':'—')+'</span></button>';});
+    h+='</div></section>';
+    h+='<section class="sec"><span class="lbl">Codes défauts (DTC)</span><div class="list" style="padding:14px;display:flex;flex-direction:column;gap:10px"><label class="fld"><span>Code lu avec ton lecteur OBD (ex. P0420)</span><input id="f_dtc" type="text" autocapitalize="characters" autocomplete="off" maxlength="5" placeholder="P0171" class="mono"></label><button class="btn" data-a="dtcFind">Expliquer le code</button><div id="dtcout" aria-live="polite"></div></div>';
+    var ds=v.dtcs.slice().sort(function(a,b){return b.date.localeCompare(a.date);});
+    h+='<div class="list">'+(ds.length?ds.map(function(d){var inf=decodeDtc(d.code);return '<div class="row s-'+(d.cleared?'na':'warn')+'"><span class="grow"><b><span class="mono">'+esc(d.code)+'</span> · '+esc(inf?inf.t:'')+'</b><small>'+fdate(d.date)+' · '+fnum(d.km)+' km</small></span><span class="rt"><span class="chip">'+(d.cleared?'Effacé':'Actif')+'</span></span><button class="qbtn" data-a="dtcToggle" data-id="'+d.id+'" aria-label="'+(d.cleared?'Réactiver':'Marquer comme effacé')+'">'+(d.cleared?'↺':'✓')+'</button><button class="qbtn" data-a="del" data-k="dtc" data-id="'+d.id+'" aria-label="Supprimer le code" style="color:var(--crit)">×</button></div>';}).join(''):'<div class="empty">Aucun code enregistré.</div>')+'</div>';
+    h+='<small>Cette page ne se connecte pas à une prise OBD. Lis les codes avec ton lecteur ou une application OBD, puis saisis-les ici pour garder l’historique par véhicule.</small></section>';
+  }else{
+    var ss={ok:'Synchronisé avec ton compte',local:'Enregistré sur cet appareil uniquement',err:'Synchronisation en attente, nouvel essai automatique'}[syncState];
+    h+='<section class="sec"><span class="lbl">Sauvegarde</span><div class="list"><div class="row"><span class="grow"><b>État</b><small>'+ss+'</small></span><span class="chip s-'+(syncState==='ok'?'ok':syncState==='err'?'warn':'na')+'">'+(syncState==='ok'?'Compte':syncState==='err'?'En attente':'Local')+'</span></div></div>'+
+      '<button class="btn ghost" data-a="export">Exporter une sauvegarde (JSON)</button><label class="fld"><span>Importer une sauvegarde</span><input id="f_import" type="file" accept=".json,application/json"></label></section>'+
+      '<section class="sec"><span class="lbl">Réglages</span><div class="list" style="padding:14px"><label class="fld"><span>Symbole de la monnaie</span><input id="f_cur" type="text" maxlength="5" value="'+esc(S.set.cur)+'"></label></div></section>'+
+      '<section class="sec"><button class="btn danger" data-a="del" data-k="all" data-id="x">Effacer toutes mes données</button></section>';
+  }
+  return h;
+}
+
+/* ============ rendu ============ */
+function render(){
+  if(!S)return;
+  var v=cur();
+  $('#vchip').innerHTML=v?'<span class="vn">'+esc(v.name)+'</span>'+plate(v)+'<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>':'<span class="vn">Ajouter une voiture</span>';
+  var fn={cockpit:vCockpit,xray:vXray,maint:vMaint,budget:vBudget,shop:vShop}[ui.tab];
+  $('#main').innerHTML=fn();
+  $$('.tab').forEach(function(b){var on=b.dataset.v===ui.tab;b.classList.toggle('on',on);if(on)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current');});
+  var im=$('#f_import');if(im)im.addEventListener('change',importFile);
+  var cu=$('#f_cur');if(cu)cu.addEventListener('change',function(){S.set.cur=cu.value.trim()||'DA';commit();});
+}
+
+/* ============ feuilles et formulaires ============ */
+function sheet(title,html,save,label){
+  var el=$('#sheet');
+  el.innerHTML='<div class="scrim" data-a="close"></div><div class="panel" role="dialog" aria-modal="true" aria-label="'+esc(title)+'"><div class="grab"></div><div class="ph"><h2>'+esc(title)+'</h2><button class="x" data-a="close" aria-label="Fermer">×</button></div><div class="pb">'+html+'<p class="err" id="ferr" hidden></p></div>'+(save?'<div class="pf"><button class="btn full" data-a="save">'+(label||'Enregistrer')+'</button></div>':'')+'</div>';
+  el.hidden=false;sheetSave=save||null;
+}
+function closeSheet(){
+  var el=$('#sheet');el.hidden=true;el.innerHTML='';sheetSave=null;
+  if(sheetCleanup){sheetCleanup();sheetCleanup=null;}
+}
+function ferr(m){var e=$('#ferr');if(e){e.textContent=m;e.hidden=false;e.scrollIntoView({block:'nearest'});}return false;}
+function fT(id,l,v,o){return '<label class="fld"><span>'+l+'</span><input id="f_'+id+'" type="text" value="'+esc(v==null?'':v)+'" '+(o||'')+'></label>';}
+function fN(id,l,v,o){return '<label class="fld"><span>'+l+'</span><input id="f_'+id+'" type="number" inputmode="decimal" step="any" value="'+(v==null?'':esc(v))+'" '+(o||'')+'></label>';}
+function fD(id,l,v){return '<label class="fld"><span>'+l+'</span><input id="f_'+id+'" type="date" value="'+esc(v||'')+'"></label>';}
+function fS(id,l,opts,v){return '<label class="fld"><span>'+l+'</span><select id="f_'+id+'">'+opts.map(function(o){var a=Array.isArray(o)?o:[o,o];return '<option value="'+esc(a[0])+'"'+(a[0]==v?' selected':'')+'>'+esc(a[1])+'</option>';}).join('')+'</select></label>';}
+function fA(id,l,v){return '<label class="fld"><span>'+l+'</span><textarea id="f_'+id+'">'+esc(v||'')+'</textarea></label>';}
+function g(id){var e=document.getElementById('f_'+id);return e?e.value:'';}
+function gn(id){var x=g(id).trim().replace(',','.');if(x==='')return null;var n=Number(x);return isNaN(n)?null:n;}
+function delBtn(k,id){return '<button class="btn danger full" data-a="del" data-k="'+k+'" data-id="'+id+'">Supprimer</button>';}
+
+function odoSheet(){
+  var v=cur();
+  sheet('Kilométrage actuel',fN('odo','Compteur (km)',v.odo,'autofocus'),function(){
+    var n=gn('odo');if(n==null||n<0)return ferr('Saisis un kilométrage valide.');
+    if(n<v.odo)return ferr('Le compteur ne peut pas baisser (actuel : '+fnum(v.odo)+' km).');
+    v.odo=n;commit(v.id);
+  });
+}
+function vehSheet(id){
+  var v=id?S.vehicles.find(function(x){return x.id===id;}):null;
+  var h=fT('name','Nom du véhicule',v&&v.name,'placeholder="Ma Golf"')+
+    '<div class="g2">'+fT('make','Marque',v&&v.make)+fT('model','Modèle',v&&v.model)+'</div>'+
+    '<div class="g2">'+fN('year','Année',v&&v.year,'min="1950" max="2100"')+fT('plate','Immatriculation',v&&v.plate,'autocapitalize="characters"')+'</div>'+
+    fT('vin','Numéro de série (VIN)',v&&v.vin,'maxlength="17" autocapitalize="characters" class="mono"')+
+    '<button class="btn ghost sm" data-a="vin" type="button">Analyser le VIN</button><p id="vinout" class="muted" style="font-size:13px"></p>'+
+    '<div class="g2">'+fS('fuel','Énergie',FUELS,v?v.fuel:'Diesel')+fN('odo','Kilométrage actuel',v?v.odo:null)+'</div>'+
+    fS('usage','Usage habituel (coefficient d’usure)',USAGE,v?v.usage:'mixte')+
+    '<div class="g2">'+fN('buy','Prix d’achat',v&&v.buy)+fN('value','Valeur actuelle estimée',v&&v.value)+'</div>'+
+    (v?fN('kmStart','Km au début du suivi',v.kmStart):'')+
+    (v?'':'<label class="chk"><input type="checkbox" id="f_pre" checked><span>Charger les '+PRE.length+' pièces types, à renseigner ensuite</span></label>')+
+    (v?delBtn('veh',v.id):'');
+  sheet(v?'Modifier le véhicule':'Nouveau véhicule',h,function(){
+    var name=g('name').trim();if(!name)return ferr('Donne un nom au véhicule.');
+    var odo=gn('odo');if(odo==null||odo<0)return ferr('Saisis le kilométrage actuel.');
+    var o={name:name,make:g('make').trim(),model:g('model').trim(),year:gn('year'),plate:g('plate').trim().toUpperCase(),vin:g('vin').trim().toUpperCase(),fuel:g('fuel'),usage:g('usage'),odo:odo,buy:gn('buy'),value:gn('value')};
+    if(v){Object.assign(v,o);var ks=gn('kmStart');if(ks!=null)v.kmStart=ks;commit(v.id);}
+    else{var nv=newV(Object.assign(o,{kmStart:odo}));if($('#f_pre').checked)loadPre(nv,null);S.vehicles.push(nv);S.active=nv.id;ui.tab='xray';commit(nv.id);}
+  });
+  var vb=$('[data-a="vin"]');if(vb)vb.addEventListener('click',function(){$('#vinout').textContent=decodeVin(g('vin'));});
+}
+function vehiclesSheet(){
+  var h='<div class="list">'+S.vehicles.map(function(x){var s=vScore(x);return '<button class="row s-'+st(s)+'" data-a="pick" data-id="'+x.id+'"><span class="grow"><b>'+esc(x.name)+(x.id===S.active?' ✓':'')+'</b><small>'+fnum(x.odo)+' km'+(x.plate?' · '+esc(x.plate):'')+'</small></span><span class="pct">'+(s==null?'—':s+'%')+'</span></button>';}).join('')+(S.vehicles.length?'':'<div class="empty">Aucun véhicule.</div>')+'</div>'+
+    '<button class="btn" data-a="newVeh">Ajouter un véhicule</button>'+(cur()?'<button class="btn ghost" data-a="editVeh">Modifier le véhicule actif</button>':'');
+  sheet('Mes véhicules',h);
+}
+function partSheet(id,sysId){
+  var v=cur(),p=id?v.parts.find(function(x){return x.id===id;}):null,w=p?wear(p,v):null,top='';
+  if(p){
+    top='<div class="pdet s-'+st(w&&w.h)+'">'+(w?'<div class="pnum">'+w.h+'<small>%</small></div><div><span class="chip">'+LBL[st(w.h)]+'</span><p style="margin-top:6px">'+esc(remTxt(w))+'</p></div>':'<div><span class="chip">À renseigner</span><p style="margin-top:6px;font-size:14px">Indique la date ou le km du dernier remplacement, et l’intervalle, pour suivre l’usure.</p></div>')+'</div>';
+    if(w){
+      var c='';
+      if(w.wk!=null)c+='<li>Km : ('+fnum(v.odo)+' − '+fnum(p.km)+') × '+fnum(w.sev,2)+' ÷ '+fnum(p.ikm)+' = '+fnum(w.wk*100)+' %</li>';
+      if(w.wt!=null)c+='<li>Temps : '+fnum(w.days/30.4375,1)+' mois ÷ '+p.imo+' mois = '+fnum(w.wt*100)+' %</li>';
+      top+='<ul class="calc">'+c+'<li>Santé = 100 − plus forte usure = '+w.h+' %</li></ul>';
+    }
+    top+='<div class="g2"><button class="btn sm" data-a="renewNow" type="button">Remplacée aujourd’hui</button><button class="btn ghost sm" data-a="logForPart" type="button">Créer un entretien</button></div>';
+  }
+  var sid=p?p.sys:(sysId||'moteur'),subs=[];SYS.forEach(function(s){s.subs.forEach(function(x){subs.push(x);});});
+  var h=top+fT('name','Nom de la pièce',p&&p.name)+
+    '<div class="g2">'+fS('sys','Système',SYS.map(function(s){return [s.id,s.n];}),sid)+'<label class="fld"><span>Sous-ensemble</span><input id="f_sub" list="dl_sub" type="text" value="'+esc(p?p.sub:'')+'"><datalist id="dl_sub">'+subs.map(function(x){return '<option value="'+esc(x)+'">';}).join('')+'</datalist></label></div>'+
+    '<div class="g2">'+fT('oem','Référence OEM',p&&p.oem,'class="mono"')+fT('brand','Marque posée',p&&p.brand)+'</div>'+
+    '<div class="g2">'+fD('date','Date de pose',p&&p.date)+fN('km','Km à la pose',p&&p.km)+'</div>'+
+    '<div class="g2">'+fN('price','Prix d’achat',p&&p.price)+fN('torque','Couple de serrage (Nm)',p&&p.torque)+'</div>'+
+    '<div class="g2">'+fN('ikm','Intervalle (km, 0 = aucun)',p?p.ikm:0)+fN('imo','Intervalle (mois, 0 = aucun)',p?p.imo:0)+'</div>'+
+    fA('note','Notes',p&&p.note)+(p?delBtn('part',p.id):'');
+  ctx.part=id||null;
+  sheet(p?p.name:'Nouvelle pièce',h,function(){
+    var name=g('name').trim();if(!name)return ferr('Donne un nom à la pièce.');
+    var o={name:name,sys:g('sys'),sub:g('sub').trim(),oem:g('oem').trim(),brand:g('brand').trim(),date:g('date')||null,km:gn('km'),price:gn('price'),torque:gn('torque'),ikm:gn('ikm')||0,imo:gn('imo')||0,note:g('note').trim()};
+    if(p)Object.assign(p,o);else v.parts.push(Object.assign({id:uid()},o));
+    commit(v.id);
+  });
+}
+function logSheet(preParts){
+  var v=cur(),h='';
+  var avail=S.stock.filter(function(i){return i.qty>0;});
+  h+='<div class="g2">'+fD('date','Date',today())+fN('km','Kilométrage',v.odo)+'</div>'+
+    '<div class="g2">'+fS('type','Réalisé',[['DIY','Fait maison'],['Pro','En garage']],'DIY')+fT('title','Intitulé','','placeholder="Vidange"')+'</div>'+
+    '<div id="shopbox" hidden>'+fT('shop','Garage ou concession','')+'</div>'+
+    '<details><summary id="ptsum">Pièces remplacées (0)</summary>'+v.parts.map(function(p){return '<label class="chk"><input type="checkbox" id="f_pt_'+p.id+'"'+(preParts&&preParts.indexOf(p.id)>=0?' checked':'')+'><span>'+esc(p.name)+'</span></label>';}).join('')+(v.parts.length?'':'<p class="muted" style="padding-bottom:10px">Aucune pièce suivie.</p>')+'</details>'+
+    (avail.length?'<details><summary>Stock utilisé</summary>'+avail.map(function(i){return '<label class="stk"><span>'+esc(i.name)+'<br><small>disponible : '+i.qty+' '+esc(i.unit)+'</small></span><span class="fld"><input id="f_stk_'+i.id+'" type="number" inputmode="decimal" step="any" min="0" max="'+i.qty+'" placeholder="0" aria-label="Quantité utilisée de '+esc(i.name)+'"></span></label>';}).join('')+'</details>':'')+
+    '<div class="g2">'+fN('cp','Pièces ('+esc(S.set.cur)+')',null)+fN('cl','Main-d’œuvre ('+esc(S.set.cur)+')',null)+'</div>'+
+    '<div id="diybox"><div class="chrono"><button class="btn ghost sm" id="chbtn" type="button">Démarrer le chrono</button><span class="mono" id="cht">00:00</span></div>'+fN('min','Temps passé (minutes)',null)+
+    '<div class="fld" style="margin-top:12px"><span>Étapes à cocher</span><div id="steps"></div><div style="display:flex;gap:8px"><input id="f_step" type="text" placeholder="Ex. vidanger l’huile" style="flex:1;min-width:0;min-height:46px;padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:var(--bg);font-size:16px"><button class="btn ghost sm" data-a="addStep" type="button">Ajouter</button></div></div></div>'+
+    fA('note','Notes','');
+  sheet('Nouvel entretien',h,function(){
+    var title=g('title').trim();if(!title)return ferr('Indique l’intitulé de l’entretien.');
+    var km=gn('km');if(km==null||km<0)return ferr('Saisis le kilométrage.');
+    stopChrono();
+    var date=g('date')||today(),ids=v.parts.filter(function(p){var e=document.getElementById('f_pt_'+p.id);return e&&e.checked;}).map(function(p){return p.id;});
+    var used=[];S.stock.forEach(function(i){var q=gn('stk_'+i.id);if(q>0)used.push({id:i.id,q:Math.min(q,i.qty)});});
+    var steps=$$('#steps label').map(function(l){return {t:l.querySelector('span').textContent,d:l.querySelector('input').checked};});
+    v.logs.push({id:uid(),date:date,km:km,type:g('type'),title:title,shop:g('type')==='Pro'?g('shop').trim():'',costParts:gn('cp')||0,costLabor:gn('cl')||0,minutes:g('type')==='DIY'?(gn('min')||0):0,partIds:ids,stock:used,steps:g('type')==='DIY'?steps:[],note:g('note').trim()});
+    v.parts.forEach(function(p){if(ids.indexOf(p.id)>=0){p.date=date;p.km=km;}});
+    used.forEach(function(u){var it=S.stock.find(function(i){return i.id===u.id;});if(it)it.qty=Math.max(0,it.qty-u.q);});
+    if(km>v.odo)v.odo=km;
+    commit(v.id);toast('Entretien enregistré'+(ids.length?' · '+ids.length+' pièce'+(ids.length>1?'s':'')+' remise'+(ids.length>1?'s':'')+' à neuf':''));
+  });
+  var tsel=$('#f_type'),upd=function(){var d=tsel.value==='DIY';$('#diybox').hidden=!d;$('#shopbox').hidden=d;};tsel.addEventListener('change',upd);upd();
+  var cnt=function(){var n=$$('details input[type=checkbox]').filter(function(c){return c.checked;}).length;$('#ptsum').textContent='Pièces remplacées ('+n+')';};
+  $$('details input[type=checkbox]').forEach(function(c){c.addEventListener('change',cnt);});cnt();
+  var run=null,acc=0,t0=0;
+  function tick(){var s=acc+(run?Math.round((Date.now()-t0)/1000):0);$('#cht').textContent=pad(Math.floor(s/60))+':'+pad(s%60);}
+  function stopChrono(){if(run){clearInterval(run);run=null;acc+=Math.round((Date.now()-t0)/1000);var el=$('#chbtn');if(el)el.textContent='Reprendre le chrono';var m=Math.ceil(acc/60);var f=$('#f_min');if(f&&m>0)f.value=m;tick();}}
+  $('#chbtn').addEventListener('click',function(){if(run){stopChrono();}else{t0=Date.now();run=setInterval(tick,1000);this.textContent='Arrêter le chrono';}});
+  sheetCleanup=function(){if(run)clearInterval(run);};
+}
+function logView(id){
+  var v=cur(),l=v.logs.find(function(x){return x.id===id;});if(!l)return;
+  var names=l.partIds.map(function(pid){var p=v.parts.find(function(x){return x.id===pid;});return p?p.name:null;}).filter(Boolean);
+  var used=(l.stock||[]).map(function(u){var it=S.stock.find(function(i){return i.id===u.id;});return it?it.name+' ×'+u.q:null;}).filter(Boolean);
+  var h='<div class="list"><div class="row"><span class="grow"><small>Date et km</small><b>'+fdate(l.date)+' · '+fnum(l.km)+' km</b></span></div>'+
+   '<div class="row"><span class="grow"><small>Réalisé</small><b>'+(l.type==='DIY'?'Fait maison':'En garage'+(l.shop?' · '+esc(l.shop):''))+'</b></span></div>'+
+   '<div class="row"><span class="grow"><small>Coût</small><b>'+money((+l.costParts||0)+(+l.costLabor||0))+'</b><small>Pièces '+money(l.costParts||0)+' · Main-d’œuvre '+money(l.costLabor||0)+'</small></span></div>'+
+   (l.minutes?'<div class="row"><span class="grow"><small>Temps passé</small><b>'+fmin(l.minutes)+'</b></span></div>':'')+
+   (names.length?'<div class="row"><span class="grow"><small>Pièces remises à neuf</small><b>'+esc(names.join(', '))+'</b></span></div>':'')+
+   (used.length?'<div class="row"><span class="grow"><small>Stock utilisé</small><b>'+esc(used.join(', '))+'</b></span></div>':'')+
+   ((l.steps||[]).length?'<div class="row"><span class="grow"><small>Étapes</small>'+l.steps.map(function(s){return '<b>'+(s.d?'✓ ':'○ ')+esc(s.t)+'</b>';}).join('')+'</span></div>':'')+
+   (l.note?'<div class="row"><span class="grow"><small>Notes</small><b>'+esc(l.note)+'</b></span></div>':'')+'</div>'+delBtn('log',l.id);
+  sheet(l.title,h);
+}
+function fuelSheet(id){
+  var v=cur(),e=id?v.fuels.find(function(x){return x.id===id;}):null,ev=v.fuel==='Électrique',u=ev?'kWh':'L';
+  var lastP=v.fuels.length?v.fuels.slice().sort(function(a,b){return b.date.localeCompare(a.date);})[0].ppl:null;
+  var h='<div class="g2">'+fD('date','Date',e?e.date:today())+fN('km','Kilométrage',e?e.km:v.odo)+'</div>'+
+    '<div class="g2">'+fN('qty',(ev?'Énergie (kWh)':'Litres'),e&&e.qty)+fN('ppl','Prix par '+u,e?e.ppl:lastP)+'</div>'+
+    fN('total','Total payé ('+esc(S.set.cur)+')',e&&e.total)+
+    '<label class="chk"><input type="checkbox" id="f_full"'+(!e||e.full?' checked':'')+'><span>'+(ev?'Charge complète':'Plein complet (réservoir rempli)')+'</span></label>'+
+    fN('dash','Conso affichée au tableau de bord ('+u+'/100, facultatif)',e&&e.dash)+fT('note','Station ou note',e&&e.note)+(e?delBtn('fuel',e.id):'');
+  sheet(e?'Modifier le plein':'Nouveau plein',h,function(){
+    var q=gn('qty'),ppl=gn('ppl'),tot=gn('total'),km=gn('km');
+    if(!(q>0))return ferr('Saisis la quantité.');
+    if(km==null||km<0)return ferr('Saisis le kilométrage.');
+    if(tot==null&&ppl!=null)tot=Math.round(q*ppl*100)/100;
+    if(!(tot>=0)||tot==null)return ferr('Saisis le prix ou le total payé.');
+    if(ppl==null)ppl=Math.round(tot/q*100)/100;
+    var o={date:g('date')||today(),km:km,qty:q,ppl:ppl,total:tot,full:$('#f_full').checked,dash:gn('dash'),note:g('note').trim()};
+    if(e)Object.assign(e,o);else v.fuels.push(Object.assign({id:uid()},o));
+    if(km>v.odo)v.odo=km;
+    commit(v.id);
+  });
+  var last='';
+  function recalc(src){
+    var q=gn('qty'),p=gn('ppl'),t=gn('total');
+    if(src==='total'){if(q>0&&t!=null)$('#f_ppl').value=Math.round(t/q*100)/100;}
+    else if(q>0&&p!=null)$('#f_total').value=Math.round(q*p*100)/100;
+  }
+  ['qty','ppl'].forEach(function(k){$('#f_'+k).addEventListener('input',function(){recalc(k);});});
+  $('#f_total').addEventListener('input',function(){recalc('total');});
+}
+function expSheet(id){
+  var v=cur(),e=id?v.exps.find(function(x){return x.id===id;}):null;
+  sheet(e?'Modifier la dépense':'Nouvelle dépense',
+    '<div class="g2">'+fD('date','Date',e?e.date:today())+fN('amount','Montant ('+esc(S.set.cur)+')',e&&e.amount)+'</div>'+fS('cat','Catégorie',EXPC,e?e.cat:'Assurance')+fT('note','Note',e&&e.note)+(e?delBtn('exp',e.id):''),
+    function(){
+      var a=gn('amount');if(!(a>=0)||a==null)return ferr('Saisis le montant.');
+      var o={date:g('date')||today(),amount:a,cat:g('cat'),note:g('note').trim()};
+      if(e)Object.assign(e,o);else v.exps.push(Object.assign({id:uid()},o));
+      commit(v.id);
+    });
+}
+function testSheet(id){
+  var v=cur(),t=id?v.tests.find(function(x){return x.id===id;}):null;
+  var h='<p class="muted" style="font-size:14px">Mesure à froid si possible. Les seuils sont des repères usuels pour une batterie 12 V au plomb, à confirmer avec un testeur de batterie.</p>'+
+    '<div class="g2">'+fD('date','Date',t?t.date:today())+fN('km','Kilométrage',t?t.km:v.odo)+'</div>'+
+    '<div class="g2">'+fN('rest','Repos, moteur coupé (V)',t&&t.rest,'placeholder="12,6"')+fN('crank','Plus bas au démarrage (V)',t&&t.crank,'placeholder="10,2"')+'</div>'+
+    '<div class="g2">'+fN('run','Moteur tournant (V)',t&&t.run,'placeholder="14,2"')+fN('sec','Durée de lancement (s)',t&&t.sec,'placeholder="0,8"')+'</div>'+
+    '<div class="verd" id="verd" aria-live="polite"></div>'+fT('note','Note',t&&t.note)+(t?delBtn('test',t.id):'');
+  sheet(t?'Test de démarrage':'Nouveau test de démarrage',h,function(){
+    var o=read();if(o.rest==null&&o.crank==null&&o.run==null&&o.sec==null)return ferr('Saisis au moins une mesure.');
+    o.date=g('date')||today();o.km=gn('km');o.note=g('note').trim();
+    if(t)Object.assign(t,o);else v.tests.push(Object.assign({id:uid()},o));
+    if(o.km>v.odo)v.odo=o.km;
+    commit(v.id);
+  });
+  function read(){return {rest:gn('rest'),crank:gn('crank'),run:gn('run'),sec:gn('sec')};}
+  function upd(){
+    var r=judge(read()),el=$('#verd');
+    el.innerHTML=r.map(function(x){return '<div class="s-'+x[0]+'"><span class="chip">'+({ok:'OK',warn:'Attention',crit:'Anormal'}[x[0]])+'</span><span><b>'+x[1]+'</b> · '+x[2]+'</span></div>';}).join('');
+    var a=gn('rest'),b=gn('crank');if(a!=null&&b!=null)el.innerHTML+='<small>Chute de tension au lancement : '+fnum(a-b,2)+' V</small>';
+  }
+  ['rest','crank','run','sec'].forEach(function(k){$('#f_'+k).addEventListener('input',upd);});upd();
+}
+function stockSheet(id){
+  var i=id?S.stock.find(function(x){return x.id===id;}):null;
+  sheet(i?'Modifier l’article':'Nouvel article',
+    fT('name','Nom',i&&i.name,'placeholder="Huile 5W30"')+'<div class="g2">'+fS('cat','Catégorie',STKC,i?i.cat:'Huile')+fT('unit','Unité',i?i.unit:'pièce','placeholder="bidon 5 L"')+'</div>'+
+    '<div class="g2">'+fN('qty','Quantité en stock',i?i.qty:1)+fN('min','Alerte quand il en reste ≤',i?i.min:1)+'</div>'+fT('note','Note',i&&i.note)+(i?delBtn('stock',i.id):''),
+    function(){
+      var name=g('name').trim();if(!name)return ferr('Donne un nom à l’article.');
+      var o={name:name,cat:g('cat'),unit:g('unit').trim()||'pièce',qty:Math.max(0,gn('qty')||0),min:Math.max(0,gn('min')||0),note:g('note').trim()};
+      if(i){Object.assign(i,o);delete i.ex;}else S.stock.push(Object.assign({id:uid()},o));
+      commit();
+    });
+}
+function importFile(ev){
+  var f=ev.target.files&&ev.target.files[0];if(!f)return;
+  var r=new FileReader();
+  r.onload=function(){
+    try{
+      var d=JSON.parse(r.result);if(!d||!Array.isArray(d.vehicles))throw new Error('format');
+      d.vehicles=d.vehicles.map(normV);d.stock=d.stock||[];d.set=d.set||{cur:'DA'};
+      sheet('Importer la sauvegarde','<p>Cette sauvegarde contient <b>'+d.vehicles.length+' véhicule'+(d.vehicles.length>1?'s':'')+'</b> et <b>'+d.stock.length+' article'+(d.stock.length>1?'s':'')+'</b> en stock. Elle remplace les données actuelles de cet appareil et de ton compte.</p>',function(){
+        S=d;S.ver=2;S.active=S.active||(S.vehicles[0]&&S.vehicles[0].id)||null;pushAll();commit();toast('Sauvegarde importée');
+      },'Remplacer mes données');
+    }catch(e){toast('Fichier de sauvegarde non reconnu');}
+  };
+  r.readAsText(f);
+}
+async function exportData(){
+  var name='apexgarage-sauvegarde-'+today()+'.json',data=JSON.stringify(S,null,1);
+  try{
+    if(window.AndroidBridge&&window.AndroidBridge.saveFile){
+      var where=window.AndroidBridge.saveFile(name,data);
+      toast(where?'Sauvegarde enregistrée : '+where:'Export impossible');return;
+    }
+    var C=window.claude,dl=(C&&C.use)?await C.use('downloads'):null;
+    if(dl){await dl.save({filename:name,data:data});toast('Sauvegarde exportée');return;}
+    var a=document.createElement('a');a.href=URL.createObjectURL(new Blob([data],{type:'application/json'}));a.download=name;document.body.appendChild(a);a.click();a.remove();toast('Sauvegarde exportée');
+  }catch(e){if(!e||e.code!=='declined')toast('Export impossible');}
+}
+function doDelete(k,id){
+  var v=cur();
+  if(k==='fuel')v.fuels=v.fuels.filter(function(x){return x.id!==id;});
+  else if(k==='exp')v.exps=v.exps.filter(function(x){return x.id!==id;});
+  else if(k==='log')v.logs=v.logs.filter(function(x){return x.id!==id;});
+  else if(k==='test')v.tests=v.tests.filter(function(x){return x.id!==id;});
+  else if(k==='dtc')v.dtcs=v.dtcs.filter(function(x){return x.id!==id;});
+  else if(k==='part')v.parts=v.parts.filter(function(x){return x.id!==id;});
+  else if(k==='stock'){S.stock=S.stock.filter(function(x){return x.id!==id;});closeSheet();commit();return;}
+  else if(k==='veh'){
+    var gone=S.vehicles.find(function(x){return x.id===id;});
+    S.vehicles=S.vehicles.filter(function(x){return x.id!==id;});dirty.gone[id]=1;delete dirty.v[id];
+    if(gone&&gone.example)S.stock=S.stock.filter(function(i){return !i.ex;});
+    if(S.active===id)S.active=S.vehicles[0]?S.vehicles[0].id:null;
+    closeSheet();commit();return;
+  }
+  else if(k==='all'){
+    S.vehicles.forEach(function(x){dirty.gone[x.id]=1;});
+    var keep=S.set;S=emptyState();S.set=keep;closeSheet();commit();toast('Données effacées');return;
+  }
+  closeSheet();commit(v.id);
+}
+
+/* ============ actions ============ */
+var A={
+ tab:function(el){ui.tab=el.dataset.v;render();window.scrollTo(0,0);},
+ close:function(){closeSheet();},
+ save:function(){if(!sheetSave)return;var r=sheetSave();if(r!==false)closeSheet();},
+ vehicles:function(){vehiclesSheet();},
+ pick:function(el){S.active=el.dataset.id;closeSheet();ui.open=null;commit();},
+ newVeh:function(){closeSheet();vehSheet(null);},
+ editVeh:function(){var v=cur();closeSheet();vehSheet(v.id);},
+ odo:function(){odoSheet();},
+ sys:function(el){ui.open=ui.open===el.dataset.id?null:el.dataset.id;if(ui.tab!=='xray')ui.tab='xray';render();var t=$('.sysb [aria-expanded="true"]');if(t)t.scrollIntoView({block:'nearest',behavior:'smooth'});},
+ part:function(el){partSheet(el.dataset.id);},
+ newPart:function(el){partSheet(null,el.dataset.sys);},
+ loadPre:function(){var v=cur();loadPre(v,null);commit(v.id);toast(PRE.length+' pièces ajoutées');},
+ renewNow:function(){var v=cur(),p=v.parts.find(function(x){return x.id===ctx.part;});if(!p)return;p.date=today();p.km=v.odo;closeSheet();commit(v.id);toast(p.name+' remise à neuf');},
+ logForPart:function(){var id=ctx.part;closeSheet();logSheet([id]);},
+ log:function(){logSheet(null);},
+ logView:function(el){logView(el.dataset.id);},
+ addStep:function(){var i=$('#f_step'),t=i.value.trim();if(!t)return;var l=document.createElement('label');l.className='chk';var c=document.createElement('input');c.type='checkbox';var s=document.createElement('span');s.textContent=t;l.appendChild(c);l.appendChild(s);$('#steps').appendChild(l);i.value='';i.focus();},
+ fuel:function(el){fuelSheet(el.dataset.id);},
+ exp:function(el){expSheet(el.dataset.id);},
+ test:function(el){testSheet(el.dataset.id);},
+ per:function(el){ui.per=el.dataset.v;render();},
+ more:function(el){ui.more[el.dataset.k]=true;render();},
+ shopTab:function(el){ui.shop=el.dataset.v;render();},
+ goStock:function(){ui.tab='shop';ui.shop='stock';render();window.scrollTo(0,0);},
+ stockEdit:function(el){stockSheet(el.dataset.id);},
+ stk:function(el){var i=S.stock.find(function(x){return x.id===el.dataset.id;});if(!i)return;i.qty=Math.max(0,i.qty+Number(el.dataset.d));delete i.ex;commit();},
+ dtcFind:function(){
+   var r=decodeDtc($('#f_dtc').value),o=$('#dtcout');ctx.dtc=r;
+   if(!r){o.innerHTML='<p class="err">Code non valide. Format attendu : une lettre (P, B, C ou U) suivie de 4 chiffres, par exemple P0420.</p>';return;}
+   var gl=['','Information : à surveiller','À faire contrôler bientôt','Urgent : évite de rouler longtemps'][r.g];
+   o.innerHTML='<div class="s-'+(r.g===3?'crit':r.g===2?'warn':'ok')+'" style="display:flex;flex-direction:column;gap:8px"><span class="chip" style="align-self:flex-start">'+esc(gl)+'</span><p><b class="mono">'+esc(r.code)+'</b> · '+esc(r.t)+'</p><p class="muted" style="font-size:14px">Causes fréquentes : '+esc(r.cause)+'</p><button class="btn ghost sm" data-a="dtcSave" style="align-self:flex-start">Ajouter à l’historique</button></div>';
+ },
+ dtcSave:function(){var v=cur();if(!ctx.dtc)return;v.dtcs.push({id:uid(),code:ctx.dtc.code,date:today(),km:v.odo,cleared:false});ctx.dtc=null;commit(v.id);toast('Code ajouté à l’historique');},
+ dtcToggle:function(el){var v=cur(),d=v.dtcs.find(function(x){return x.id===el.dataset.id;});if(d){d.cleared=!d.cleared;commit(v.id);}},
+ export:function(){exportData();},
+ del:function(el){
+   if(!el.dataset.armed){el.dataset.armed='1';el.dataset.t=el.textContent;el.textContent='Confirmer la suppression';setTimeout(function(){if(el.isConnected&&el.dataset.armed){delete el.dataset.armed;el.textContent=el.dataset.t;}},3500);return;}
+   doDelete(el.dataset.k,el.dataset.id);
+ }
+};
+document.addEventListener('click',function(e){var el=e.target.closest('[data-a]');if(!el)return;var f=A[el.dataset.a];if(f){e.preventDefault();f(el,e);}});
+document.addEventListener('keydown',function(e){
+  if(e.key==='Escape'&&!$('#sheet').hidden)closeSheet();
+  if((e.key==='Enter'||e.key===' ')&&e.target.matches&&e.target.matches('g.hot')){e.preventDefault();A.sys(e.target);}
+});
+$('#tabs').innerHTML=TABS.map(function(t){return '<button class="tab" data-a="tab" data-v="'+t[0]+'">'+ico(t[0])+'<span>'+t[1]+'</span></button>';}).join('');
+
+window.__back=function(){
+  if(!$('#sheet').hidden){closeSheet();return true;}
+  if(ui.tab!=='cockpit'){ui.tab='cockpit';render();window.scrollTo(0,0);return true;}
+  return false;
+};
+/* ============ démarrage ============ */
+var loaded=loadLocal();
+if(loaded&&Array.isArray(loaded.vehicles)){S=loaded;S.vehicles=S.vehicles.map(normV);S.stock=S.stock||[];S.set=S.set||{cur:'DA'};}
+else S=seed();
+render();
+initSync();
+})();
+</script>
+</body>
+</html>
